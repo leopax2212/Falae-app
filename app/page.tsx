@@ -10,12 +10,7 @@ export default function WelcomePage() {
 
         <div className="flex flex-col items-center gap-8">
           <div className="relative h-[400px] w-full max-w-md">
-            <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/1-D14FN9n3VLvX8KPB6eUFLLZ5l0AeUm.png"
-              alt="Mãos unidas em círculo"
-              fill
-              className="object-contain"
-            />
+            <Image src="/images/hands-unity.jpg" alt="Mãos unidas em círculo" fill className="object-contain" />
           </div>
 
           <div className="text-center">

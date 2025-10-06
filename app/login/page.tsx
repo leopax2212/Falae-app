@@ -49,9 +49,11 @@ export default function LoginPage() {
         <div className="mt-16 flex flex-col items-center gap-4">
           <GradientButton>Login</GradientButton>
 
-          <button className="rounded-full border-2 border-black bg-white px-12 py-4 text-lg font-semibold transition-colors hover:bg-gray-50">
-            Não tenho Conta
-          </button>
+          <Link href="/cadastro">
+            <button className="rounded-full border-2 border-black bg-white px-12 py-4 text-lg font-semibold transition-colors hover:bg-gray-50">
+              Não tenho Conta
+            </button>
+          </Link>
         </div>
       </div>
 

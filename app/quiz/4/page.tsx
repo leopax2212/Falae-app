@@ -94,7 +94,7 @@ export default function Quiz4Page() {
         </div>
       </div>
 
-      <Navigation backHref="/quiz/3" />
+      <Navigation backHref="/quiz/3" nextHref="/quiz/5" />
     </div>
   )
 }

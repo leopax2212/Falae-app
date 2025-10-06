@@ -5,7 +5,7 @@ import { GradientButton } from "@/components/gradient-button"
 import { Navigation } from "@/components/navigation"
 import { useState } from "react"
 
-export default function Quiz3Page() {
+export default function Quiz5Page() {
   const [selected, setSelected] = useState<number | null>(null)
 
   return (
@@ -16,12 +16,12 @@ export default function Quiz3Page() {
         <div className="mt-8 w-full max-w-md space-y-12">
           <div className="text-center">
             <p className="mb-6 text-xl font-semibold italic">Personalidade.</p>
-            <h1 className="text-xl font-bold">3.Me considero uma pessoa estressada.</h1>
+            <h1 className="text-xl font-bold">7.Quão importante é a espiritualidade pra você?</h1>
           </div>
 
           <div className="space-y-6">
             <div className="flex items-center justify-between text-sm">
-              <span>Discordo</span>
+              <span>Não importante</span>
             </div>
 
             <div className="grid grid-cols-5 gap-3">
@@ -53,7 +53,7 @@ export default function Quiz3Page() {
             </div>
 
             <div className="flex justify-end text-sm">
-              <span>Concordo Plenamente</span>
+              <span>Muito Importante</span>
             </div>
           </div>
 
@@ -63,7 +63,7 @@ export default function Quiz3Page() {
         </div>
       </div>
 
-      <Navigation backHref="/quiz/2" nextHref="/quiz/4" />
+      <Navigation backHref="/quiz/4" nextHref="/quiz/6" />
     </div>
   )
 }
