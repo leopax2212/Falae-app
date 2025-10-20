@@ -59,12 +59,14 @@ export default function Quiz10Page() {
           </div>
 
           <div className="flex justify-center pt-4">
-            <GradientButton>Enviar</GradientButton>
+            <a href="/preferencias">
+              <GradientButton>Enviar</GradientButton>
+            </a>
           </div>
         </div>
       </div>
 
-      <Navigation backHref="/quiz/9" nextHref="/" />
+      <Navigation backHref="/quiz/9" nextHref="/preferencias" />
     </div>
   )
 }
