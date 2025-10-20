@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { ChevronLeft, Share2, Calendar, Users, Gamepad2, MessageSquare } from "lucide-react"
-import { BottomNavigation } from "@/components/bottom-navigation"
+import BottomNavigation from "@/components/bottom-navigation"
 import { Button } from "@/components/ui/button"
 
 export default function EventosPage() {

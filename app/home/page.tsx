@@ -1,7 +1,7 @@
 "use client"
 
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { BottomNavigation } from "@/components/bottom-navigation"
+import BottomNavigation from "@/components/bottom-navigation"
 
 export default function HomePage() {
   const events = [

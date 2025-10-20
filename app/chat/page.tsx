@@ -1,6 +1,6 @@
 "use client"
 
-import { BottomNavigation } from "@/components/bottom-navigation"
+import BottomNavigation from "@/components/bottom-navigation"
 
 export default function ChatPage() {
   return (

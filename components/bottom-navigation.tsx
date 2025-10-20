@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Home, MessageCircle, Calendar, User } from "lucide-react"
 
-export function BottomNavigation() {
+export default function BottomNavigation() {
   const pathname = usePathname()
 
   const navItems = [
