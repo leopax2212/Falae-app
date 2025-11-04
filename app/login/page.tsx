@@ -14,11 +14,15 @@ export default function LoginPage() {
   const router = useRouter()
 
   const handleLogin = () => {
-    // Static admin credentials
-    if (email === "admin@falaê.com" && password === "admin123") {
+    console.log("[v0] Login attempt - Email:", email, "Password:", password)
+    console.log("[v0] Admin check - email === 'admin@falae.com':", email === "admin@falae.com")
+    console.log("[v0] Admin check - password === 'admin123':", password === "admin123")
+
+    if (email === "admin@falae.com" && password === "admin123") {
+      console.log("[v0] Admin login detected, pushing to /admin")
       router.push("/admin")
     } else {
-      // Regular user login
+      console.log("[v0] Regular user login, pushing to /quiz/welcome")
       router.push("/quiz/welcome")
     }
   }
@@ -79,7 +83,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <Navigation backHref="/" nextHref="/quiz/welcome" />
+      <Navigation backHref="/" />
     </div>
   )
 }
