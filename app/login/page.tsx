@@ -1,14 +1,27 @@
 "use client"
 
 import { Logo } from "@/components/logo"
-import { GradientButton } from "@/components/gradient-button"
 import { Navigation } from "@/components/navigation"
 import { Eye } from "lucide-react"
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const router = useRouter()
+
+  const handleLogin = () => {
+    // Static admin credentials
+    if (email === "admin@falaê.com" && password === "admin123") {
+      router.push("/admin")
+    } else {
+      // Regular user login
+      router.push("/quiz/welcome")
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -21,6 +34,8 @@ export default function LoginPage() {
           <input
             type="email"
             placeholder="seueemail@gmail.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded-full border-2 border-black px-6 py-4 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
 
@@ -28,6 +43,8 @@ export default function LoginPage() {
             <input
               type={showPassword ? "text" : "password"}
               placeholder="••••••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-full border-2 border-black px-6 py-4 pr-14 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <button
@@ -47,7 +64,12 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-16 flex flex-col items-center gap-4">
-          <GradientButton>Login</GradientButton>
+          <button
+            onClick={handleLogin}
+            className="rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-lime-300 px-12 py-4 text-lg font-semibold text-white shadow-lg transition-transform hover:scale-105"
+          >
+            Login
+          </button>
 
           <Link href="/cadastro">
             <button className="rounded-full border-2 border-black bg-white px-12 py-4 text-lg font-semibold transition-colors hover:bg-gray-50">
