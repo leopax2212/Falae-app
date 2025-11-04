@@ -2,20 +2,19 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, MessageCircle, Calendar, User } from "lucide-react"
+import { Home, Clock, User } from "lucide-react"
 
 export default function BottomNavigation() {
   const pathname = usePathname()
 
   const navItems = [
     { href: "/home", icon: Home, label: "Home" },
-    { href: "/chat", icon: MessageCircle, label: "Bate-papo" },
-    { href: "/eventos", icon: Calendar, label: "Eventos" },
+    { href: "/historico", icon: Clock, label: "Histórico" },
     { href: "/perfil", icon: User, label: "Perfil" },
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-safe z-40">
       <div className="flex justify-around items-center h-16 max-w-lg mx-auto px-4">
         {navItems.map((item) => {
           const isActive = pathname === item.href

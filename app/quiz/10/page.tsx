@@ -4,10 +4,23 @@ import { Logo } from "@/components/logo"
 import { GradientButton } from "@/components/gradient-button"
 import { Navigation } from "@/components/navigation"
 import { useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 
 export default function Quiz10Page() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const isEditingPreferences = searchParams.get("edit") === "true"
+
   const [selectedPet, setSelectedPet] = useState<string | null>(null)
   const [mantra, setMantra] = useState("")
+
+  const handleSubmit = () => {
+    if (isEditingPreferences) {
+      router.push("/perfil")
+    } else {
+      router.push("/home")
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -59,14 +72,14 @@ export default function Quiz10Page() {
           </div>
 
           <div className="flex justify-center pt-4">
-            <a href="/preferencias">
+            <button onClick={handleSubmit}>
               <GradientButton>Enviar</GradientButton>
-            </a>
+            </button>
           </div>
         </div>
       </div>
 
-      <Navigation backHref="/quiz/9" nextHref="/preferencias" />
+      <Navigation backHref="/quiz/9" onNext={handleSubmit} />
     </div>
   )
 }
