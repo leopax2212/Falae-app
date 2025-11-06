@@ -4,11 +4,19 @@ import { Logo } from "@/components/logo"
 import { GradientButton } from "@/components/gradient-button"
 import { Navigation } from "@/components/navigation"
 import { useState } from "react"
+import { useQuizContext } from "@/contexts/quiz-context"
 
 const options = ["Italiana", "Mexicana", "Chinesa", "Indiana"]
 
 export default function Quiz2Page() {
   const [selected, setSelected] = useState<string | null>(null)
+  const { updateQuizData } = useQuizContext()
+
+  const handleNext = () => {
+    if (selected) {
+      updateQuizData({ tipoComidaFavorito: selected })
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -36,7 +44,9 @@ export default function Quiz2Page() {
           </div>
 
           <div className="flex justify-center">
-            <GradientButton>Enviar</GradientButton>
+            <button onClick={handleNext}>
+              <GradientButton>Enviar</GradientButton>
+            </button>
           </div>
         </div>
       </div>

@@ -4,12 +4,23 @@ import { Logo } from "@/components/logo"
 import { GradientButton } from "@/components/gradient-button"
 import { Navigation } from "@/components/navigation"
 import { useState } from "react"
+import { useQuizContext } from "@/contexts/quiz-context"
 
 const relationshipOptions = ["Casado(a)", "Solteiro(a)", "Prefiro não dizer"]
 
 export default function Quiz9Page() {
   const [selectedRelationship, setSelectedRelationship] = useState<string | null>(null)
   const [hasChildren, setHasChildren] = useState<string | null>(null)
+  const { updateQuizData } = useQuizContext()
+
+  const handleNext = () => {
+    if (selectedRelationship && hasChildren) {
+      updateQuizData({
+        statusRelacionamento: selectedRelationship,
+        temFilhos: hasChildren === "Sim",
+      })
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -63,7 +74,9 @@ export default function Quiz9Page() {
           </div>
 
           <div className="flex justify-center pt-4">
-            <GradientButton>Enviar</GradientButton>
+            <button onClick={handleNext}>
+              <GradientButton>Enviar</GradientButton>
+            </button>
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { Logo } from "@/components/logo"
 import { GradientButton } from "@/components/gradient-button"
 import { Navigation } from "@/components/navigation"
 import { useState } from "react"
+import { useQuizContext } from "@/contexts/quiz-context"
 
 const musicOptions = [
   { label: "Rock", emoji: "🎸" },
@@ -19,6 +20,16 @@ const moodOptions = ["Maratonador(a)", "Só Clássicos", "Gosta de estréias", "
 export default function Quiz8Page() {
   const [selectedMusic, setSelectedMusic] = useState<string | null>(null)
   const [selectedMood, setSelectedMood] = useState<string | null>(null)
+  const { updateQuizData } = useQuizContext()
+
+  const handleNext = () => {
+    if (selectedMusic && selectedMood) {
+      updateQuizData({
+        preferenciaMusical: selectedMusic,
+        moodFilmesSeries: selectedMood,
+      })
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -68,7 +79,9 @@ export default function Quiz8Page() {
           </div>
 
           <div className="flex justify-center pt-4">
-            <GradientButton>Enviar</GradientButton>
+            <button onClick={handleNext}>
+              <GradientButton>Enviar</GradientButton>
+            </button>
           </div>
         </div>
       </div>

@@ -4,11 +4,23 @@ import { Logo } from "@/components/logo"
 import { GradientButton } from "@/components/gradient-button"
 import { Navigation } from "@/components/navigation"
 import { useState } from "react"
+import { useQuizContext } from "@/contexts/quiz-context"
 
 export default function Quiz4Page() {
   const [viajar, setViajar] = useState<string | null>(null)
   const [local, setLocal] = useState<string | null>(null)
   const [ambiente, setAmbiente] = useState<string | null>(null)
+  const { updateQuizData } = useQuizContext()
+
+  const handleNext = () => {
+    if (viajar && local && ambiente) {
+      updateQuizData({
+        gostaViajar: viajar === "sim",
+        preferenciaLocal: local,
+        preferenciaAmbiente: ambiente,
+      })
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -89,7 +101,9 @@ export default function Quiz4Page() {
           </div>
 
           <div className="flex justify-center">
-            <GradientButton>Enviar</GradientButton>
+            <button onClick={handleNext}>
+              <GradientButton>Enviar</GradientButton>
+            </button>
           </div>
         </div>
       </div>

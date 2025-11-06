@@ -4,9 +4,17 @@ import { Logo } from "@/components/logo"
 import { GradientButton } from "@/components/gradient-button"
 import { Navigation } from "@/components/navigation"
 import { useState } from "react"
+import { useQuizContext } from "@/contexts/quiz-context"
 
 export default function Quiz5Page() {
   const [selected, setSelected] = useState<number | null>(null)
+  const { updateQuizData } = useQuizContext()
+
+  const handleNext = () => {
+    if (selected !== null) {
+      updateQuizData({ importanciaEspiritualidade: selected })
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -58,7 +66,9 @@ export default function Quiz5Page() {
           </div>
 
           <div className="flex justify-center">
-            <GradientButton>Enviar</GradientButton>
+            <button onClick={handleNext}>
+              <GradientButton>Enviar</GradientButton>
+            </button>
           </div>
         </div>
       </div>
