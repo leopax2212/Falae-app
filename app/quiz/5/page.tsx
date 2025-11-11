@@ -5,14 +5,17 @@ import { GradientButton } from "@/components/gradient-button"
 import { Navigation } from "@/components/navigation"
 import { useState } from "react"
 import { useQuizContext } from "@/contexts/quiz-context"
+import { useRouter } from "next/navigation"
 
 export default function Quiz5Page() {
+  const router = useRouter()
   const [selected, setSelected] = useState<number | null>(null)
   const { updateQuizData } = useQuizContext()
 
   const handleNext = () => {
     if (selected !== null) {
       updateQuizData({ importanciaEspiritualidade: selected })
+      router.push("/quiz/6")
     }
   }
 

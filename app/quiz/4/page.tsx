@@ -5,8 +5,10 @@ import { GradientButton } from "@/components/gradient-button"
 import { Navigation } from "@/components/navigation"
 import { useState } from "react"
 import { useQuizContext } from "@/contexts/quiz-context"
+import { useRouter } from "next/navigation"
 
 export default function Quiz4Page() {
+  const router = useRouter()
   const [viajar, setViajar] = useState<string | null>(null)
   const [local, setLocal] = useState<string | null>(null)
   const [ambiente, setAmbiente] = useState<string | null>(null)
@@ -19,6 +21,7 @@ export default function Quiz4Page() {
         preferenciaLocal: local,
         preferenciaAmbiente: ambiente,
       })
+      router.push("/quiz/5")
     }
   }
 

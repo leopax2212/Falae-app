@@ -60,7 +60,7 @@ export default function CadastroPage() {
     setLoading(true)
 
     try {
-      const response = await fetch("http://localhost:8081/bff/usuarios", {
+      const response = await fetch("/api/usuarios", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -68,7 +68,7 @@ export default function CadastroPage() {
         body: JSON.stringify({
           nome: formData.nome,
           cpf: formData.cpf,
-          dataNascimento: new Date(formData.dataNascimento).toISOString(),
+          dataNascimento: formData.dataNascimento,
           cidade: formData.cidade,
           email: formData.email,
           senha: formData.senha,
@@ -81,8 +81,13 @@ export default function CadastroPage() {
         return
       }
 
-      // Redirect to login on success
-      router.push("/login")
+      const responseData = await response.json()
+      const usuarioId = responseData.id || responseData.usuarioId || formData.email
+      localStorage.setItem("usuarioId", usuarioId)
+      localStorage.setItem("userEmail", formData.email)
+
+      // Redirect to quiz welcome on success
+      router.push("/quiz/welcome")
     } catch (err) {
       setError("Erro ao conectar com o servidor. Verifique sua conexão.")
       console.error("Cadastro error:", err)

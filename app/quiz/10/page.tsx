@@ -16,56 +16,65 @@ export default function Quiz10Page() {
   const [selectedPet, setSelectedPet] = useState<string | null>(null)
   const [mantra, setMantra] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
 
   const handleSubmit = async () => {
-    if (selectedPet && mantra) {
-      setIsLoading(true)
-      try {
-        // Update quiz data with final answers
-        updateQuizData({
-          preferenciaAnimal: selectedPet === "dog" ? "Cachorro" : "Gato",
-          fraseDefinicao: mantra,
-        })
+    if (!selectedPet || !mantra.trim()) {
+      setError("Por favor, preencha todos os campos")
+      console.log("[v0] Quiz 10 validation failed - selectedPet:", selectedPet, "mantra:", mantra)
+      return
+    }
 
-        // Prepare complete data for submission
-        const completeData = {
-          ...quizData,
-          preferenciaAnimal: selectedPet === "dog" ? "Cachorro" : "Gato",
-          fraseDefinicao: mantra,
-          usuarioId: localStorage.getItem("usuarioId") || "", // Get user ID from localStorage after login
-        }
+    setIsLoading(true)
+    setError("")
 
-        console.log("[v0] Submitting quiz data:", completeData)
+    try {
+      console.log("[v0] Quiz 10 - Starting submission")
 
-        // Send to BFF
-        const response = await fetch("http://localhost:8081/bff/preferencias", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(completeData),
-        })
+      // Update quiz data with final answers
+      updateQuizData({
+        preferenciaAnimal: selectedPet === "dog" ? "Cachorro" : "Gato",
+        fraseDefinicao: mantra,
+      })
 
-        if (!response.ok) {
-          throw new Error("Falha ao enviar preferências")
-        }
-
-        console.log("[v0] Quiz data submitted successfully")
-
-        // Reset quiz data and redirect
-        resetQuizData()
-
-        if (isEditingPreferences) {
-          router.push("/perfil")
-        } else {
-          router.push("/home")
-        }
-      } catch (error) {
-        console.error("[v0] Error submitting quiz:", error)
-        alert("Erro ao salvar suas preferências. Tente novamente.")
-      } finally {
-        setIsLoading(false)
+      // Prepare complete data for submission
+      const completeData = {
+        ...quizData,
+        preferenciaAnimal: selectedPet === "dog" ? "Cachorro" : "Gato",
+        fraseDefinicao: mantra,
+        usuarioId: localStorage.getItem("usuarioId") || "",
       }
+
+      console.log("[v0] Quiz 10 - Complete data ready:", completeData)
+
+      const response = await fetch("/api/preferencias", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(completeData),
+      })
+
+      console.log("[v0] Quiz 10 - Response status:", response.status)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error("[v0] Quiz 10 - Error response:", errorText)
+        throw new Error("Falha ao enviar preferências")
+      }
+
+      console.log("[v0] Quiz 10 - Data submitted successfully")
+
+      // Reset quiz data and redirect
+      resetQuizData()
+
+      const redirectPath = isEditingPreferences ? "/perfil" : "/home"
+      console.log("[v0] Quiz 10 - Redirecting to:", redirectPath)
+      router.push(redirectPath)
+    } catch (error) {
+      console.error("[v0] Quiz 10 - Error:", error)
+      setError("Erro ao salvar suas preferências. Tente novamente.")
+      setIsLoading(false)
     }
   }
 
@@ -118,15 +127,17 @@ export default function Quiz10Page() {
             </div>
           </div>
 
+          {error && <div className="rounded-lg bg-red-50 p-4 text-center text-red-600">{error}</div>}
+
           <div className="flex justify-center pt-4">
-            <button onClick={handleSubmit} disabled={isLoading}>
-              <GradientButton>{isLoading ? "Enviando..." : "Enviar"}</GradientButton>
-            </button>
+            <GradientButton onClick={handleSubmit} disabled={isLoading}>
+              {isLoading ? "Enviando..." : "Enviar"}
+            </GradientButton>
           </div>
         </div>
       </div>
 
-      <Navigation backHref="/quiz/9" onNext={handleSubmit} />
+      <Navigation backHref="/quiz/9" />
     </div>
   )
 }

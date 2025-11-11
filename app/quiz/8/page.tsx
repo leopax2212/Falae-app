@@ -5,6 +5,7 @@ import { GradientButton } from "@/components/gradient-button"
 import { Navigation } from "@/components/navigation"
 import { useState } from "react"
 import { useQuizContext } from "@/contexts/quiz-context"
+import { useRouter } from "next/navigation"
 
 const musicOptions = [
   { label: "Rock", emoji: "🎸" },
@@ -18,6 +19,7 @@ const musicOptions = [
 const moodOptions = ["Maratonador(a)", "Só Clássicos", "Gosta de estréias", "Film Cult", "Séries Populares"]
 
 export default function Quiz8Page() {
+  const router = useRouter()
   const [selectedMusic, setSelectedMusic] = useState<string | null>(null)
   const [selectedMood, setSelectedMood] = useState<string | null>(null)
   const { updateQuizData } = useQuizContext()
@@ -28,6 +30,7 @@ export default function Quiz8Page() {
         preferenciaMusical: selectedMusic,
         moodFilmesSeries: selectedMood,
       })
+      router.push("/quiz/9")
     }
   }
 

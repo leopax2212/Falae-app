@@ -5,10 +5,12 @@ import { GradientButton } from "@/components/gradient-button"
 import { Navigation } from "@/components/navigation"
 import { useState } from "react"
 import { useQuizContext } from "@/contexts/quiz-context"
+import { useRouter } from "next/navigation"
 
 const relationshipOptions = ["Casado(a)", "Solteiro(a)", "Prefiro não dizer"]
 
 export default function Quiz9Page() {
+  const router = useRouter()
   const [selectedRelationship, setSelectedRelationship] = useState<string | null>(null)
   const [hasChildren, setHasChildren] = useState<string | null>(null)
   const { updateQuizData } = useQuizContext()
@@ -19,6 +21,7 @@ export default function Quiz9Page() {
         statusRelacionamento: selectedRelationship,
         temFilhos: hasChildren === "Sim",
       })
+      router.push("/quiz/10")
     }
   }
 
