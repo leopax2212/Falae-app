@@ -19,6 +19,8 @@ interface QuizData {
   temFilhos: boolean
   preferenciaAnimal: string
   fraseDefinicao: string
+  idiomaPreferido: string
+  investimentoEncontro: string
   gostosPessoaisJson: string
 }
 
@@ -26,6 +28,7 @@ interface QuizContextType {
   quizData: Partial<QuizData>
   updateQuizData: (data: Partial<QuizData>) => void
   resetQuizData: () => void
+  enviarQuiz: () => Promise<void>
 }
 
 const QuizContext = createContext<QuizContextType | undefined>(undefined)
@@ -48,6 +51,8 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     temFilhos: false,
     preferenciaAnimal: "",
     fraseDefinicao: "",
+    idiomaPreferido: "",
+    investimentoEncontro: "",
     gostosPessoaisJson: "",
   })
 
@@ -73,11 +78,42 @@ export function QuizProvider({ children }: { children: ReactNode }) {
       temFilhos: false,
       preferenciaAnimal: "",
       fraseDefinicao: "",
+      idiomaPreferido: "",
+      investimentoEncontro: "",
       gostosPessoaisJson: "",
     })
   }
 
-  return <QuizContext.Provider value={{ quizData, updateQuizData, resetQuizData }}>{children}</QuizContext.Provider>
+  // 💥 NOVA FUNÇÃO — faz o POST direto pro BFF
+  const enviarQuiz = async () => {
+    try {
+      const response = await fetch("http://localhost:8081/bff/preferencias", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(quizData),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error("Erro ao enviar preferências:", errorText)
+        alert("Erro ao enviar preferências. Verifique o console.")
+        return
+      }
+
+      const result = await response.json()
+      console.log("Preferências salvas com sucesso:", result)
+      alert("Preferências enviadas com sucesso 🎉")
+    } catch (error) {
+      console.error("Erro de rede ou servidor:", error)
+      alert("Erro ao enviar preferências. Verifique sua conexão.")
+    }
+  }
+
+  return (
+    <QuizContext.Provider value={{ quizData, updateQuizData, resetQuizData, enviarQuiz }}>
+      {children}
+    </QuizContext.Provider>
+  )
 }
 
 export function useQuizContext() {

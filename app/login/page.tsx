@@ -14,15 +14,13 @@ export default function LoginPage() {
   const router = useRouter()
 
   const handleLogin = () => {
-    console.log("[v0] Login attempt - Email:", email, "Password:", password)
-    console.log("[v0] Admin check - email === 'admin@falae.com':", email === "admin@falae.com")
-    console.log("[v0] Admin check - password === 'admin123':", password === "admin123")
-
     if (email === "admin@falae.com" && password === "admin123") {
-      console.log("[v0] Admin login detected, pushing to /admin")
       router.push("/admin")
     } else {
-      console.log("[v0] Regular user login, pushing to /quiz/welcome")
+      const tempUserId = email.split("@")[0] + "_" + Date.now()
+      localStorage.setItem("usuarioId", tempUserId)
+      localStorage.setItem("userEmail", email)
+      localStorage.setItem("userName", email.split("@")[0])
       router.push("/quiz/welcome")
     }
   }
@@ -67,16 +65,16 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="mt-16 flex flex-col items-center gap-4">
+        <div className="mt-16 flex flex-col items-center gap-4 w-full max-w-md">
           <button
             onClick={handleLogin}
-            className="rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-lime-300 px-12 py-4 text-lg font-semibold text-white shadow-lg transition-transform hover:scale-105"
+            className="w-full rounded-full bg-gradient-to-r from-blue-500 via-blue-400 to-orange-400 px-12 py-4 text-lg font-semibold text-white shadow-lg transition-transform hover:scale-105"
           >
             Login
           </button>
 
-          <Link href="/cadastro">
-            <button className="rounded-full border-2 border-black bg-white px-12 py-4 text-lg font-semibold transition-colors hover:bg-gray-50">
+          <Link href="/cadastro" className="w-full">
+            <button className="w-full rounded-full border-2 border-black bg-white px-12 py-4 text-lg font-semibold transition-colors hover:bg-gray-50">
               Não tenho Conta
             </button>
           </Link>

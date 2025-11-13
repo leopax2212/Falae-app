@@ -2,12 +2,16 @@ export async function POST(request: Request) {
   try {
     const data = await request.json()
 
+    // 🔧 Corrige o problema do usuarioId vazio
+    const usuarioId = data.usuarioId || localStorage.getItem("usuarioId") || "1" // substitua por um ID real
+    const payload = { ...data, usuarioId }
+
     const response = await fetch("http://localhost:8081/bff/preferencias", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     })
 
     if (!response.ok) {

@@ -3,10 +3,15 @@
 import { Logo } from "@/components/logo"
 import { GradientButton } from "@/components/gradient-button"
 import { Navigation } from "@/components/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 export default function QuizWelcomePage() {
-  const [userName, setUserName] = useState("Heloisa")
+  const [userName, setUserName] = useState("")
+
+  useEffect(() => {
+    const name = localStorage.getItem("userName") || localStorage.getItem("userEmail")?.split("@")[0] || "Usuário"
+    setUserName(name)
+  }, [])
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -15,7 +20,7 @@ export default function QuizWelcomePage() {
 
         <div className="mt-16 w-full max-w-md space-y-8 text-center">
           <h1 className="text-2xl font-bold">
-            Bem Vinda <span className="font-bold">{userName}!</span>
+            Bem Vindo(a) <span className="font-bold">{userName}!</span>
           </h1>
 
           <p className="text-left text-base leading-relaxed">

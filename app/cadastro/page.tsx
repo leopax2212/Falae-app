@@ -68,7 +68,7 @@ export default function CadastroPage() {
         body: JSON.stringify({
           nome: formData.nome,
           cpf: formData.cpf,
-          dataNascimento: formData.dataNascimento,
+          dataNascimento: new Date(formData.dataNascimento).toISOString(),
           cidade: formData.cidade,
           email: formData.email,
           senha: formData.senha,
@@ -85,6 +85,7 @@ export default function CadastroPage() {
       const usuarioId = responseData.id || responseData.usuarioId || formData.email
       localStorage.setItem("usuarioId", usuarioId)
       localStorage.setItem("userEmail", formData.email)
+      localStorage.setItem("userName", formData.nome)
 
       // Redirect to quiz welcome on success
       router.push("/quiz/welcome")
