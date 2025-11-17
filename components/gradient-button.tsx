@@ -14,7 +14,7 @@ export function GradientButton({ children, className, href, ...props }: Gradient
       <Link href={href}>
         <button
           className={cn(
-            "rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-lime-300 px-12 py-4 text-lg font-semibold text-white shadow-lg transition-transform hover:scale-105",
+            "w-full rounded-full bg-gradient-to-r from-blue-500 via-blue-400 to-orange-400 px-12 py-4 text-lg font-semibold text-white shadow-lg transition-transform hover:scale-105",
             className,
           )}
           {...props}
@@ -28,7 +28,7 @@ export function GradientButton({ children, className, href, ...props }: Gradient
   return (
     <button
       className={cn(
-        "rounded-full bg-gradient-to-r from-cyan-400 via-teal-400 to-lime-300 px-12 py-4 text-lg font-semibold text-white shadow-lg transition-transform hover:scale-105",
+        "w-full rounded-full bg-gradient-to-r from-blue-500 via-blue-400 to-orange-400 px-12 py-4 text-lg font-semibold text-white shadow-lg transition-transform hover:scale-105",
         className,
       )}
       {...props}

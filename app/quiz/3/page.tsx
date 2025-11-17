@@ -5,7 +5,7 @@ import { GradientButton } from "@/components/gradient-button"
 import { Navigation } from "@/components/navigation"
 import { useState } from "react"
 import { useQuizContext } from "@/contexts/quiz-context"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 
 export default function Quiz3Page() {
   const router = useRouter()
@@ -41,7 +41,7 @@ export default function Quiz3Page() {
                   key={num}
                   onClick={() => setSelected(num)}
                   className={`aspect-square rounded-2xl border-2 border-black text-2xl font-semibold transition-colors ${
-                    selected === num ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                    selected === num ? "bg-gray-500 text-white" : "bg-white hover:bg-gray-50"
                   }`}
                 >
                   {num}
@@ -55,7 +55,7 @@ export default function Quiz3Page() {
                   key={num}
                   onClick={() => setSelected(num)}
                   className={`aspect-square rounded-2xl border-2 border-black text-2xl font-semibold transition-colors ${
-                    selected === num ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                    selected === num ? "bg-gray-500 text-white" : "bg-white hover:bg-gray-50"
                   }`}
                 >
                   {num}
@@ -69,14 +69,12 @@ export default function Quiz3Page() {
           </div>
 
           <div className="flex justify-center">
-            <button onClick={handleNext}>
-              <GradientButton>Enviar</GradientButton>
-            </button>
+            <GradientButton onClick={handleNext} disabled={selected === null}>Enviar</GradientButton>
           </div>
         </div>
       </div>
 
-      <Navigation backHref="/quiz/2" nextHref="/quiz/4" />
+      <Navigation backHref="/quiz/2" />
     </div>
   )
 }

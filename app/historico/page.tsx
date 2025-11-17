@@ -1,6 +1,6 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 import BottomNavigation from "@/components/bottom-navigation"
 
 export default function HistoricoPage() {
@@ -46,13 +46,13 @@ export default function HistoricoPage() {
           </h1>
         </div>
 
-        <div className="border-2 border-gray-900 rounded-2xl overflow-hidden mb-6">
+        <div className="border-2 border-gray-900 rounded-2xl overflow-hidden mb-6 max-w-2xl mx-auto">
           <div className="bg-white px-4 py-3 text-center">
             <h2 className="font-bold text-gray-900 text-sm">HISTÓRICO DE ENCONTROS</h2>
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 max-w-2xl mx-auto">
           {pastEvents.map((event) => (
             <div key={event.id} className="space-y-2">
               <div className="border-2 border-gray-900 rounded-2xl p-4 bg-white">

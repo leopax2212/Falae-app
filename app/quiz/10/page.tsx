@@ -3,8 +3,9 @@
 import { Logo } from "@/components/logo"
 import { Navigation } from "@/components/navigation"
 import { useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuizContext } from "@/contexts/quiz-context"
+import { GradientButton } from "@/components/gradient-button" // Assuming GradientButton is imported from this path
 
 const languageOptions = ["Português", "Espanhol", "Inglês"]
 const investmentOptions = ["$", "$$", "$$$"]
@@ -43,7 +44,7 @@ export default function Quiz10Page() {
                 key={option}
                 onClick={() => setSelectedLanguage(option)}
                 className={`w-full rounded-full border-2 border-black px-8 py-4 text-lg italic transition-colors ${
-                  selectedLanguage === option ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                  selectedLanguage === option ? "bg-gray-400" : "bg-white hover:bg-gray-50"
                 }`}
               >
                 {option}
@@ -60,7 +61,7 @@ export default function Quiz10Page() {
                   key={option}
                   onClick={() => setSelectedInvestment(option)}
                   className={`rounded-full border-2 border-black px-8 py-4 text-xl font-bold transition-colors ${
-                    selectedInvestment === option ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                    selectedInvestment === option ? "bg-gray-400" : "bg-white hover:bg-gray-50"
                   }`}
                 >
                   {option}
@@ -68,10 +69,14 @@ export default function Quiz10Page() {
               ))}
             </div>
           </div>
+
+          <div className="flex justify-center pt-4">
+            <GradientButton onClick={handleNext}>Enviar</GradientButton>
+          </div>
         </div>
       </div>
 
-      <Navigation backHref="/quiz/9" nextHref="/quiz/11" onNext={handleNext} />
+      <Navigation backHref="/quiz/9" />
     </div>
   )
 }

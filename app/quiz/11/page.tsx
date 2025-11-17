@@ -1,76 +1,86 @@
-"use client"
+"use client";
 
-import { Logo } from "@/components/logo"
-import { GradientButton } from "@/components/gradient-button"
-import { Navigation } from "@/components/navigation"
-import { useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { useQuizContext } from "@/contexts/quiz-context"
+import { Logo } from "@/components/logo";
+import { GradientButton } from "@/components/gradient-button";
+import { Navigation } from "@/components/navigation";
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useQuizContext } from "@/contexts/quiz-context";
 
 export default function Quiz11Page() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const isEditingPreferences = searchParams.get("edit") === "true"
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const isEditingPreferences = searchParams.get("edit") === "true";
+  const { quizData, updateQuizData, resetQuizData } = useQuizContext();
 
-  const { quizData, updateQuizData, resetQuizData } = useQuizContext()
-
-  const [selectedPet, setSelectedPet] = useState<string | null>(null)
-  const [mantra, setMantra] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [selectedPet, setSelectedPet] = useState<string | null>(null);
+  const [mantra, setMantra] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async () => {
     if (!selectedPet || !mantra.trim()) {
-      setError("Por favor, preencha todos os campos")
-      return
+      setError("Por favor, preencha todos os campos");
+      return;
     }
 
-    setIsLoading(true)
-    setError("")
+    setIsLoading(true);
+    setError("");
 
     try {
-      // Atualiza os dados no contexto
-      const updatedData = {
+      updateQuizData({
         preferenciaAnimal: selectedPet === "dog" ? "Cachorro" : "Gato",
         fraseDefinicao: mantra,
-        usuarioId: localStorage.getItem("usuarioId") || "",
-      }
+      });
 
-      updateQuizData(updatedData)
+      const usuarioId = localStorage.getItem("usuarioId") || "";
+      const preferenciaId = localStorage.getItem("preferenciaId") || null;
 
-      // Junta tudo do contexto + o que foi atualizado
+      console.log("preferenciaId carregado:", preferenciaId);
+      console.log("edit mode?", isEditingPreferences);
+
       const completeData = {
         ...quizData,
-        ...updatedData,
-      }
+        preferenciaAnimal: selectedPet === "dog" ? "Cachorro" : "Gato",
+        fraseDefinicao: mantra,
+        usuarioId,
+      };
 
-      // Faz o POST direto pro BFF (sem route.ts!)
-      const response = await fetch("http://localhost:8081/bff/preferencias", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      // ⬇ Escolhe POST ou PUT + URL correta
+      const url =
+        isEditingPreferences && preferenciaId
+          ? `/api/preferencias/${preferenciaId}`
+          : `/api/preferencias`;
+
+      const method = isEditingPreferences ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(completeData),
-      })
+      });
 
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error("Erro do BFF:", errorText)
-        throw new Error("Falha ao enviar preferências")
+        const errorText = await response.text();
+        console.error("Error response:", errorText);
+        throw new Error("Falha ao enviar preferências");
       }
 
-      const result = await response.json()
-      console.log("Preferências salvas com sucesso:", result)
+      resetQuizData();
 
-      // Reseta e redireciona
-      resetQuizData()
-      const redirectPath = isEditingPreferences ? "/perfil" : "/home"
-      router.push(redirectPath)
-    } catch (err) {
-      console.error("Erro geral:", err)
-      setError("Erro ao salvar suas preferências. Tente novamente.")
-    } finally {
-      setIsLoading(false)
+      const redirectPath = isEditingPreferences
+        ? "/home?message=As preferências foram alteradas"
+        : "/home";
+
+      router.push(redirectPath);
+    } catch (error) {
+      console.error("Error:", error);
+      setError("Erro ao salvar suas preferências. Tente novamente.");
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
@@ -83,13 +93,15 @@ export default function Quiz11Page() {
           </div>
 
           <div className="space-y-6">
-            <h2 className="text-center text-lg font-bold">16. Gosta mais de:</h2>
+            <h2 className="text-center text-lg font-bold">16.Gosta mais de:</h2>
 
             <div className="flex items-center justify-center gap-6">
               <button
                 onClick={() => setSelectedPet("dog")}
                 className={`flex h-32 w-32 items-center justify-center rounded-3xl border-2 border-black transition-colors ${
-                  selectedPet === "dog" ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                  selectedPet === "dog"
+                    ? "bg-gray-500 text-white"
+                    : "bg-white hover:bg-gray-50"
                 }`}
               >
                 <div className="text-6xl">🐕</div>
@@ -100,7 +112,9 @@ export default function Quiz11Page() {
               <button
                 onClick={() => setSelectedPet("cat")}
                 className={`flex h-32 w-32 items-center justify-center rounded-3xl border-2 border-black transition-colors ${
-                  selectedPet === "cat" ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                  selectedPet === "cat"
+                    ? "bg-gray-500 text-white"
+                    : "bg-white hover:bg-gray-50"
                 }`}
               >
                 <div className="text-6xl">🐱</div>
@@ -109,7 +123,9 @@ export default function Quiz11Page() {
           </div>
 
           <div className="space-y-6">
-            <h2 className="text-center text-lg font-bold">17. Uma frase que defina você ou que seja seu mantra:</h2>
+            <h2 className="text-center text-lg font-bold">
+              17.Uma frase que defina você ou que seja seu mantra:
+            </h2>
 
             <div className="relative">
               <textarea
@@ -121,22 +137,15 @@ export default function Quiz11Page() {
             </div>
           </div>
 
-          {error && <div className="rounded-lg bg-red-50 p-4 text-center text-red-600">{error}</div>}
+          {error && (
+            <div className="rounded-lg bg-red-50 p-4 text-center text-red-600">
+              {error}
+            </div>
+          )}
 
           <div className="flex justify-center pt-4">
-            <GradientButton
-              onClick={handleSubmit}
-              disabled={isLoading}
-              className="flex items-center justify-center gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Enviando...
-                </>
-              ) : (
-                "Enviar"
-              )}
+            <GradientButton onClick={handleSubmit} disabled={isLoading}>
+              {isLoading ? "Enviando..." : "Enviar"}
             </GradientButton>
           </div>
         </div>
@@ -144,5 +153,5 @@ export default function Quiz11Page() {
 
       <Navigation backHref="/quiz/10" />
     </div>
-  )
+  );
 }

@@ -53,7 +53,7 @@ export default function Quiz8Page() {
                   key={option.label}
                   onClick={() => setSelectedMusic(option.label)}
                   className={`flex items-center justify-center gap-1 rounded-full border-2 border-black px-4 py-3 text-sm transition-colors ${
-                    selectedMusic === option.label ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                    selectedMusic === option.label ? "bg-gray-500 text-white" : "bg-white hover:bg-gray-50"
                   }`}
                 >
                   <span>{option.emoji}</span>
@@ -72,7 +72,7 @@ export default function Quiz8Page() {
                   key={option}
                   onClick={() => setSelectedMood(option)}
                   className={`w-full rounded-full border-2 border-black px-8 py-3 text-base italic transition-colors ${
-                    selectedMood === option ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                    selectedMood === option ? "bg-gray-500 text-white" : "bg-white hover:bg-gray-50"
                   }`}
                 >
                   {option}
@@ -89,7 +89,7 @@ export default function Quiz8Page() {
         </div>
       </div>
 
-      <Navigation backHref="/quiz/7" nextHref="/quiz/9" />
+      <Navigation backHref="/quiz/7"/>
     </div>
   )
 }

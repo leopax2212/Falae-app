@@ -42,7 +42,7 @@ export default function Quiz4Page() {
                 <button
                   onClick={() => setViajar("sim")}
                   className={`rounded-full border-2 border-black px-12 py-3 text-lg transition-colors ${
-                    viajar === "sim" ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                    viajar === "sim" ? "bg-gray-500 text-white" : "bg-white hover:bg-gray-50"
                   }`}
                 >
                   Sim
@@ -50,7 +50,7 @@ export default function Quiz4Page() {
                 <button
                   onClick={() => setViajar("nao")}
                   className={`rounded-full border-2 border-black px-12 py-3 text-lg transition-colors ${
-                    viajar === "nao" ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                    viajar === "nao" ? "bg-gray-500 text-white" : "bg-white hover:bg-gray-50"
                   }`}
                 >
                   Não
@@ -64,7 +64,7 @@ export default function Quiz4Page() {
                 <button
                   onClick={() => setLocal("cidade")}
                   className={`rounded-full border-2 border-black px-12 py-3 text-lg transition-colors ${
-                    local === "cidade" ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                    local === "cidade" ? "bg-gray-500 text-white" : "bg-white hover:bg-gray-50"
                   }`}
                 >
                   Cidade
@@ -72,7 +72,7 @@ export default function Quiz4Page() {
                 <button
                   onClick={() => setLocal("campo")}
                   className={`rounded-full border-2 border-black px-12 py-3 text-lg transition-colors ${
-                    local === "campo" ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                    local === "campo" ? "bg-gray-500 text-white" : "bg-white hover:bg-gray-50"
                   }`}
                 >
                   Campo
@@ -86,7 +86,7 @@ export default function Quiz4Page() {
                 <button
                   onClick={() => setAmbiente("praia")}
                   className={`rounded-full border-2 border-black px-12 py-3 text-lg transition-colors ${
-                    ambiente === "praia" ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                    ambiente === "praia" ? "bg-gray-500 text-white" : "bg-white hover:bg-gray-50"
                   }`}
                 >
                   Praia
@@ -94,7 +94,7 @@ export default function Quiz4Page() {
                 <button
                   onClick={() => setAmbiente("montanha")}
                   className={`rounded-full border-2 border-black px-12 py-3 text-lg transition-colors ${
-                    ambiente === "montanha" ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                    ambiente === "montanha" ? "bg-gray-500 text-white" : "bg-white hover:bg-gray-50"
                   }`}
                 >
                   Montanha
@@ -111,7 +111,7 @@ export default function Quiz4Page() {
         </div>
       </div>
 
-      <Navigation backHref="/quiz/3" nextHref="/quiz/5" />
+      <Navigation backHref="/quiz/3"/>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from 'next/navigation'
 import BottomNavigation from "@/components/bottom-navigation"
 
 type ScheduledEvent = {
@@ -14,7 +14,10 @@ type ScheduledEvent = {
 
 export default function HomePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [showCancelModal, setShowCancelModal] = useState(false)
+  const [showMessage, setShowMessage] = useState(false)
+  const [message, setMessage] = useState("")
 
   const [scheduledEvent, setScheduledEvent] = useState<ScheduledEvent>({
     id: 1,
@@ -23,6 +26,15 @@ export default function HomePage() {
     time: "20:00",
     location: "Blumenau (centro)",
   })
+
+  useEffect(() => {
+    const msg = searchParams.get("message")
+    if (msg) {
+      setMessage(msg)
+      setShowMessage(true)
+      setTimeout(() => setShowMessage(false), 3000)
+    }
+  }, [searchParams])
 
   const handleCancel = () => {
     setScheduledEvent(null)
@@ -37,7 +49,9 @@ export default function HomePage() {
           <span className="text-[#F5A623]">ê!</span>
         </h1>
 
-        <h2 className="text-xl font-semibold text-gray-900 mb-12">Olá Helo 👋</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-12">
+          Olá {typeof window !== "undefined" ? localStorage.getItem("userName") || "Usuário" : "Usuário"} 👋
+        </h2>
 
         {scheduledEvent ? (
           <div className="w-full max-w-sm space-y-6">
@@ -90,6 +104,12 @@ export default function HomePage() {
           </div>
         )}
       </div>
+
+      {showMessage && (
+        <div className="fixed top-4 left-4 right-4 bg-green-100 border-2 border-green-500 rounded-lg p-4 text-green-800 font-semibold text-center">
+          {message}
+        </div>
+      )}
 
       {showCancelModal && (
         <div className="fixed inset-0 z-50 flex items-end justify-center">

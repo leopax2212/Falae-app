@@ -35,8 +35,6 @@ export default function QuizWelcomePage() {
           </div>
         </div>
       </div>
-
-      <Navigation backHref="/login" nextHref="/quiz/1" />
     </div>
   )
 }

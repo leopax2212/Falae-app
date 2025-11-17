@@ -38,7 +38,7 @@ export default function Quiz6Page() {
                 key={option}
                 onClick={() => setSelected(option)}
                 className={`w-full rounded-full border-2 border-black px-8 py-4 text-lg italic transition-colors ${
-                  selected === option ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                  selected === option ? "bg-gray-500 text-white" : "bg-white hover:bg-gray-50"
                 }`}
               >
                 {option}
@@ -54,7 +54,7 @@ export default function Quiz6Page() {
         </div>
       </div>
 
-      <Navigation backHref="/quiz/5" nextHref="/quiz/7" />
+      <Navigation backHref="/quiz/5"/>
     </div>
   )
 }

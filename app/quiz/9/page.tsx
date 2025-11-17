@@ -44,7 +44,7 @@ export default function Quiz9Page() {
                   key={option}
                   onClick={() => setSelectedRelationship(option)}
                   className={`w-full rounded-full border-2 border-black px-8 py-3 text-base italic transition-colors ${
-                    selectedRelationship === option ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                    selectedRelationship === option ? "bg-gray-500 text-white" : "bg-white hover:bg-gray-50"
                   }`}
                 >
                   {option}
@@ -60,7 +60,7 @@ export default function Quiz9Page() {
               <button
                 onClick={() => setHasChildren("Sim")}
                 className={`rounded-full border-2 border-black px-12 py-3 text-base transition-colors ${
-                  hasChildren === "Sim" ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                  hasChildren === "Sim" ? "bg-gray-500 text-white" : "bg-white hover:bg-gray-50"
                 }`}
               >
                 Sim
@@ -68,7 +68,7 @@ export default function Quiz9Page() {
               <button
                 onClick={() => setHasChildren("Não")}
                 className={`rounded-full border-2 border-black px-12 py-3 text-base transition-colors ${
-                  hasChildren === "Não" ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                  hasChildren === "Não" ? "bg-gray-500 text-white" : "bg-white hover:bg-gray-50"
                 }`}
               >
                 Não
@@ -84,7 +84,7 @@ export default function Quiz9Page() {
         </div>
       </div>
 
-      <Navigation backHref="/quiz/8" nextHref="/quiz/10" />
+      <Navigation backHref="/quiz/8"/>
     </div>
   )
 }

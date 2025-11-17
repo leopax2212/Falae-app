@@ -41,7 +41,7 @@ export default function Quiz5Page() {
                   key={num}
                   onClick={() => setSelected(num)}
                   className={`aspect-square rounded-2xl border-2 border-black text-2xl font-semibold transition-colors ${
-                    selected === num ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                    selected === num ? "bg-gray-500 text-white" : "bg-white hover:bg-gray-50"
                   }`}
                 >
                   {num}
@@ -55,7 +55,7 @@ export default function Quiz5Page() {
                   key={num}
                   onClick={() => setSelected(num)}
                   className={`aspect-square rounded-2xl border-2 border-black text-2xl font-semibold transition-colors ${
-                    selected === num ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                    selected === num ? "bg-gray-500 text-white" : "bg-white hover:bg-gray-50"
                   }`}
                 >
                   {num}
@@ -76,7 +76,7 @@ export default function Quiz5Page() {
         </div>
       </div>
 
-      <Navigation backHref="/quiz/4" nextHref="/quiz/6" />
+      <Navigation backHref="/quiz/4"/>
     </div>
   )
 }

@@ -28,7 +28,7 @@ export default function EsqueceuSenhaPage() {
         </div>
       </div>
 
-      <Navigation backHref="/login" nextHref="/verificacao" />
+      <Navigation backHref="/login"/>
     </div>
   )
 }

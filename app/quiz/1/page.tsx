@@ -5,7 +5,7 @@ import { GradientButton } from "@/components/gradient-button"
 import { Navigation } from "@/components/navigation"
 import { useState } from "react"
 import { useQuizContext } from "@/contexts/quiz-context"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 
 const options = ["Manhã", "Tarde", "Noite", "Madrugada"]
 
@@ -38,7 +38,7 @@ export default function Quiz1Page() {
                 key={option}
                 onClick={() => setSelected(option)}
                 className={`w-full rounded-full border-2 border-black px-8 py-4 text-lg italic transition-colors ${
-                  selected === option ? "bg-gray-100" : "bg-white hover:bg-gray-50"
+                  selected === option ? "bg-gray-500 text-white" : "bg-white hover:bg-gray-50"
                 }`}
               >
                 {option}
@@ -47,14 +47,12 @@ export default function Quiz1Page() {
           </div>
 
           <div className="flex justify-center">
-            <button onClick={handleNext}>
-              <GradientButton>Enviar</GradientButton>
-            </button>
+            <GradientButton onClick={handleNext} disabled={!selected}>Enviar</GradientButton>
           </div>
         </div>
       </div>
 
-      <Navigation backHref="/quiz/welcome" nextHref="/quiz/2" />
+      <Navigation backHref="/quiz/welcome" />
     </div>
   )
 }
