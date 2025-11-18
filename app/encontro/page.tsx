@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 
@@ -29,7 +29,7 @@ interface EncontroBackend {
   id: string;
   localId: string;
   dataHora: string;
-  participantes?: string[];
+  participantes?: Usuario[] | string[];
   minimoPreferenciasIguais?: number;
 }
 
@@ -63,25 +63,69 @@ export default function EncontroPage() {
   const [busyEncontroIds, setBusyEncontroIds] = useState<
     Record<string, boolean>
   >({});
+  const [usuarioEncontroId, setUsuarioEncontroId] = useState<string | null>(
+    null
+  );
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // pega id do user logado - VERSÃO MAIS ROBUSTA
-  // pega id do user logado - CORRIGIDO
+  // pega id do user logado
   const loggedUserId = useMemo(() => {
     try {
-      const raw = typeof window !== "undefined" ? localStorage.getItem("usuarioId") : null;
-      console.log('🔍 DEBUG - usuarioId do localStorage:', raw);
-
-      if (!raw) {
-        console.log('❌ Nenhum usuarioId encontrado no localStorage');
-        return null;
-      }
-
-      // Como você está salvando diretamente o ID como string, não precisa fazer JSON.parse
+      const raw =
+        typeof window !== "undefined"
+          ? localStorage.getItem("usuarioId")
+          : null;
+      if (!raw) return null;
       return raw;
     } catch {
       return null;
     }
   }, []);
+
+  // token (opcional)
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+  // refs para armazenar valores atuais e evitar dependências instáveis
+  const usuariosRef = useRef<Usuario[]>([]);
+  const tokenRef = useRef<string | null>(token);
+  const loggedUserIdRef = useRef<string | null>(loggedUserId);
+  const selectedLocalIdRef = useRef<string>(selectedLocalId);
+  const eventosRef = useRef<Evento[]>([]);
+  const encontrosBackendRef = useRef<EncontroBackend[]>([]);
+
+  // sincroniza refs sempre que o state muda
+  useEffect(() => {
+    usuariosRef.current = usuarios;
+  }, [usuarios]);
+
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
+
+  useEffect(() => {
+    loggedUserIdRef.current = loggedUserId;
+  }, [loggedUserId]);
+
+  useEffect(() => {
+    selectedLocalIdRef.current = selectedLocalId;
+  }, [selectedLocalId]);
+
+  useEffect(() => {
+    eventosRef.current = eventos;
+  }, [eventos]);
+
+  useEffect(() => {
+    encontrosBackendRef.current = encontrosBackend;
+  }, [encontrosBackend]);
+
+  // Verifica se usuário já tem encontro ao carregar a página
+  useEffect(() => {
+    if (usuarioEncontroId) {
+      console.log("Usuário já tem encontro, redirecionando para home...");
+      router.push("/home");
+    }
+  }, [usuarioEncontroId, router]);
 
   // gerar datas automáticas (7,9,10 dias)
   function makeEventDates() {
@@ -111,159 +155,207 @@ export default function EncontroPage() {
     });
   }
 
+  // =========================
+  // Função: carregar encontros do BFF
+  // =========================
+  const carregarEncontros = useCallback(async (localId?: string) => {
+    try {
+      const currentToken = tokenRef.current;
+      const currentLoggedUserId = loggedUserIdRef.current;
+      const currentUsuarios = usuariosRef.current;
+      const headers: HeadersInit = {};
+      if (currentToken) headers.Authorization = currentToken;
+
+      const rE = await fetch("http://localhost:8081/bff/encontros", {
+        headers,
+      });
+
+      if (!rE.ok) {
+        console.warn("Falha ao carregar encontros do BFF");
+        setEncontrosBackend([]);
+        setEventos([]);
+        setUsuarioEncontroId(null);
+        return;
+      }
+
+      const backendEncsRaw = await rE.json();
+      const backendEncsArray: EncontroBackend[] = Array.isArray(backendEncsRaw)
+        ? backendEncsRaw
+        : [backendEncsRaw];
+
+      setEncontrosBackend(backendEncsArray);
+      encontrosBackendRef.current = backendEncsArray;
+
+      // Descobre se loggedUser já está em algum encontro (backendId)
+      if (currentLoggedUserId) {
+        const encontroDoUsuario = backendEncsArray.find((eb) => {
+          if (!eb.participantes) return false;
+          return eb.participantes.some((p: any) =>
+            typeof p === "string"
+              ? p === currentLoggedUserId
+              : p.id === currentLoggedUserId
+          );
+        });
+
+        setUsuarioEncontroId(encontroDoUsuario ? encontroDoUsuario.id : null);
+      } else {
+        setUsuarioEncontroId(null);
+      }
+
+      // Reconstrói eventos
+      const useLocal = localId ?? selectedLocalIdRef.current;
+      const dateInfos = makeEventDates();
+
+      const builtEvents: Evento[] = dateInfos.map((di) => {
+        const found = backendEncsArray.find(
+          (eb) =>
+            new Date(eb.dataHora).toISOString() === di.iso &&
+            eb.localId === useLocal
+        );
+
+        const localSaved = eventosRef.current.find(
+          (ev) => ev.dataHoraISO === di.iso
+        );
+
+        let participantesUsers: Usuario[] = [];
+
+        if (found?.participantes) {
+          participantesUsers = found.participantes
+            .map((pidOrObj: any) => {
+              if (!pidOrObj) return null;
+              if (typeof pidOrObj === "string") {
+                return (
+                  currentUsuarios.find((u) => u.id === pidOrObj) ??
+                  ({ id: pidOrObj } as Usuario)
+                );
+              }
+              return (
+                currentUsuarios.find((u) => u.id === pidOrObj.id) ??
+                (pidOrObj as Usuario)
+              );
+            })
+            .filter((u): u is Usuario => u !== null);
+        }
+
+        if (
+          localSaved &&
+          localSaved.participantes.length > participantesUsers.length
+        ) {
+          participantesUsers = localSaved.participantes;
+        }
+
+        return {
+          id: `auto-${di.days}`,
+          localId: useLocal ?? "",
+          dataHoraISO: di.iso,
+          displayDate: di.displayDate,
+          displayTime: di.displayTime,
+          participantes: participantesUsers,
+          backendId: found?.id ?? localSaved?.backendId,
+        };
+      });
+
+      setEventos(builtEvents);
+    } catch (e: any) {
+      console.error("Erro em carregarEncontros:", e);
+    }
+  }, []);
+
   // carregamento principal
   useEffect(() => {
+    let mounted = true;
+
     async function loadAll() {
       setLoading(true);
       try {
-        // 1. Locais — AGORA VIA BFF
+        // 1. Locais — VIA BFF
         try {
           const resLoc = await fetch("http://localhost:8081/bff/locais");
           if (resLoc.ok) {
             const data = await resLoc.json();
             const arr = Array.isArray(data) ? data : [data];
+            if (!mounted) return;
             setLocais(arr);
-            setSelectedLocalId(arr[0]?.id ?? "");
+            setSelectedLocalId((prev) => prev ?? arr[0]?.id ?? "");
           } else {
             throw new Error("Falha ao carregar locais");
           }
         } catch {
+          if (!mounted) return;
+          // Mock fixo com restaurante já definido
           setLocais([
             {
               id: "1",
               nome: "Restaurante Bella Itália",
-              endereco: "Rua das Flores, 123",
+              endereco: "Rua das Flores, 123 - Centro, Blumenau",
               capacidade: 20,
               ativo: true,
               imagemUrl: "https://picsum.photos/200",
             },
-            {
-              id: "2",
-              nome: "Hamburgueria Smash House",
-              endereco: "Av. Central, 456",
-              capacidade: 15,
-              ativo: true,
-              imagemUrl: "https://picsum.photos/201",
-            },
           ]);
-          setSelectedLocalId("1");
+          setSelectedLocalId((prev) => prev ?? "1");
         }
 
         // 2. Usuários — VIA BFF
-        const resUsers = await fetch("http://localhost:8081/bff/usuarios");
-        if (!resUsers.ok) throw new Error("Falha ao carregar usuários");
+        try {
+          const resUsers = await fetch("http://localhost:8081/bff/usuarios");
+          if (!resUsers.ok) throw new Error("Falha ao carregar usuários");
 
-        const udata = await resUsers.json();
-        const usersArray = Array.isArray(udata)
-          ? udata
-          : udata.items
+          const udata = await resUsers.json();
+          const usersArray = Array.isArray(udata)
+            ? udata
+            : udata.items
             ? udata.items
             : [udata];
 
-        setUsuarios(usersArray);
+          if (!mounted) return;
+          setUsuarios(usersArray);
+          usuariosRef.current = usersArray;
+        } catch (e) {
+          console.warn("Erro carregando usuarios:", e);
+          if (!mounted) return;
+          setUsuarios([]);
+          usuariosRef.current = [];
+        }
 
-        // CORREÇÃO TEMPORÁRIA NO FRONTEND - apenas para teste
-        // 3. Preferências por usuário — CORREÇÃO DA URL
+        // 3. Preferências por usuário
         const prefsMap: Record<string, string[]> = {};
+        setUsuariosPrefs(prefsMap);
 
-        await Promise.allSettled(
-          usersArray.map(async (u: Usuario) => {
-            const uid = u.id!;
-            try {
-              // ENQUANTO O BFF NÃO É CORRIGIDO, podemos testar chamando o .NET diretamente:
-              const r = await fetch(`http://localhost:8081/bff/preferencias/usuario/${uid}`);
-
-              if (!r.ok) {
-                console.warn(`Erro ${r.status} ao buscar preferências do usuário ${uid}`);
-                prefsMap[uid] = [];
-                return;
-              }
-
-              const prefResp = await r.json();
-              console.log(`✅ Resposta do backend .NET para usuário ${uid}:`, prefResp);
-
-              // Processamento normal...
-              if (Array.isArray(prefResp)) {
-                const preferencias: string[] = [];
-                prefResp.forEach((prefObj) => {
-                  const camposPreferencia = [
-                    'horarioFavorito', 'tipoComidaFavorito', 'preferenciaLocal',
-                    'preferenciaAmbiente', 'posicaoPolitica', 'genero',
-                    'preferenciaMusical', 'moodFilmesSeries', 'statusRelacionamento',
-                    'preferenciaAnimal', 'idiomaPreferido', 'investimentoEncontro', 'fraseDefinicao'
-                  ];
-
-                  camposPreferencia.forEach((campo) => {
-                    const valor = prefObj[campo];
-                    if (valor && typeof valor === 'string' && valor.trim() !== '') {
-                      preferencias.push(valor.trim());
-                    }
-                  });
-                });
-
-                prefsMap[uid] = [...new Set(preferencias)];
-              } else {
-                prefsMap[uid] = [];
-              }
-
-            } catch (error) {
-              console.error(`Erro ao processar preferências do usuário ${uid}:`, error);
-              prefsMap[uid] = [];
-            }
-          })
-        );
-
-        // 4. Encontros — VIA BFF
-        try {
-          const rE = await fetch("http://localhost:8081/bff/encontros");
-          if (rE.ok) {
-            const backendEncs = await rE.json();
-            setEncontrosBackend(
-              Array.isArray(backendEncs) ? backendEncs : [backendEncs]
-            );
-          }
-        } catch { }
-
-        // 5. Criar eventos locais + anexar inscritos vindos do backend
-        const dateInfos = makeEventDates();
-
-        const builtEvents: Evento[] = dateInfos.map((di) => {
-          const found = (encontrosBackend ?? []).find(
-            (eb) =>
-              new Date(eb.dataHora).toISOString() === di.iso &&
-              eb.localId === selectedLocalId
-          );
-
-          let participantesUsers: Usuario[] = [];
-
-          if (found?.participantes) {
-            participantesUsers = found.participantes
-              .map((pid) => usersArray.find((u: Usuario) => u.id === pid) ?? null)
-              .filter((u): u is Usuario => u !== null);
-          }
-
-          return {
-            id: `auto-${di.days}`,
-            localId: selectedLocalId,
-            dataHoraISO: di.iso,
-            displayDate: di.displayDate,
-            displayTime: di.displayTime,
-            participantes: participantesUsers,
-            backendId: found?.id,
-          };
-        });
-
-        setEventos(builtEvents);
+        // 4. Encontros
+        await carregarEncontros();
       } catch (e: any) {
         console.error(e);
+        if (!mounted) return;
         setError(e.message ?? "Erro desconhecido");
       } finally {
+        if (!mounted) return;
         setLoading(false);
       }
     }
 
     loadAll();
-  }, []);
+
+    return () => {
+      mounted = false;
+    };
+  }, [carregarEncontros]);
+
+  // Polling para atualizar lista de encontros a cada 5s
+  useEffect(() => {
+    const iv = setInterval(() => {
+      carregarEncontros();
+    }, 5000);
+
+    return () => clearInterval(iv);
+  }, [carregarEncontros]);
+
+  // Quando trocar o local selecionado, recarrega encontros
+  useEffect(() => {
+    if (!selectedLocalId) return;
+    selectedLocalIdRef.current = selectedLocalId;
+    carregarEncontros(selectedLocalId);
+  }, [selectedLocalId, carregarEncontros]);
 
   // compatibilidade
   function countCompatibles(evento: Evento): number {
@@ -275,6 +367,7 @@ export default function EncontroPage() {
     let count = 0;
 
     evento.participantes.forEach((p) => {
+      if (p.id === loggedUserId) return; // não contar a si mesmo
       const pid = p.id!;
       const pPrefs = usuariosPrefs[pid] ?? [];
       const inter = pPrefs.filter((x) => loggedPrefs.includes(x));
@@ -288,28 +381,67 @@ export default function EncontroPage() {
     return ev.participantes.length >= 5;
   }
 
-  // Clique "Participar"
-  // Clique "Participar" - CORRIGIDO
+  // =========================
+  // Função: participar (POST)
+  // =========================
   async function handleParticipar(evento: Evento) {
-    console.log('🔍 DEBUG handleParticipar - usuarioId:', loggedUserId);
+    console.log("🔍 DEBUG handleParticipar - usuarioId:", loggedUserId);
 
     if (!loggedUserId) {
       alert("Você precisa estar logado para participar.");
       return;
     }
 
-    // Como você não está salvando token no login, vamos verificar se tem o usuarioId
-    const token = localStorage.getItem("token"); // Isso pode ser null
-    console.log('🔍 DEBUG - token:', token);
-
     if (busyEncontroIds[evento.id]) return;
-
     setBusyEncontroIds((s) => ({ ...s, [evento.id]: true }));
 
     try {
-      let backendId = evento.backendId;
+      const headersBase: HeadersInit = {};
+      if (token) headersBase.Authorization = token;
+      headersBase["Content-Type"] = "application/json";
 
-      // 1. Criar encontro se ainda não existir
+      let backendId: string | undefined = evento.backendId;
+
+      // 0. Se usuário já participa deste encontro
+      if (evento.participantes.some((p) => p.id === loggedUserId)) {
+        setBusyEncontroIds((s) => {
+          const c = { ...s };
+          delete c[evento.id];
+          return c;
+        });
+        alert("Você já está inscrito neste encontro.");
+        return;
+      }
+
+      // 1. Se usuário está em outro encontro, remover dele primeiro
+      if (usuarioEncontroId && usuarioEncontroId !== backendId) {
+        const respRem = await fetch(
+          `http://localhost:8081/bff/encontros/${usuarioEncontroId}/participantes/${loggedUserId}`,
+          {
+            method: "DELETE",
+            headers: token ? { Authorization: token } : {},
+          }
+        );
+        if (!respRem.ok) {
+          console.warn("Falha ao remover inscrição do encontro anterior");
+        } else {
+          setEventos((prev) =>
+            prev.map((ev) =>
+              ev.backendId === usuarioEncontroId
+                ? {
+                    ...ev,
+                    participantes: ev.participantes.filter(
+                      (p) => p.id !== loggedUserId
+                    ),
+                  }
+                : ev
+            )
+          );
+          setUsuarioEncontroId(null);
+        }
+      }
+
+      // 2. Criar encontro se ainda não existir
       if (!backendId) {
         const payload = {
           localId: selectedLocalId,
@@ -317,62 +449,94 @@ export default function EncontroPage() {
           minimoPreferenciasIguais: 0,
         };
 
-        const headers: HeadersInit = {
-          "Content-Type": "application/json",
-        };
-
-        // Só adiciona Authorization se tiver token
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
-        }
-
         const resp = await fetch("http://localhost:8081/bff/encontros", {
           method: "POST",
-          headers: headers,
+          headers: headersBase,
           body: JSON.stringify(payload),
         });
 
-        if (!resp.ok) throw new Error("Erro ao criar encontro");
+        if (!resp.ok) {
+          const txt = await resp.text();
+          throw new Error(txt || "Erro ao criar encontro");
+        }
 
         const created = await resp.json();
         backendId = created.id;
       }
 
-      // 2. Inscrever usuário
-      const headers: HeadersInit = {};
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
-      }
-
+      // 3. Inscrever usuário no encontro alvo
       const resp2 = await fetch(
         `http://localhost:8081/bff/encontros/${backendId}/participantes/${loggedUserId}`,
         {
           method: "POST",
-          headers: headers,
+          headers: token ? { Authorization: token } : {},
         }
       );
 
-      if (!resp2.ok) throw new Error("Erro ao inscrever no encontro");
+      if (!resp2.ok) {
+        const txt = await resp2.text();
+        try {
+          const j = JSON.parse(txt);
+          throw new Error(j.message ?? j.error ?? txt);
+        } catch {
+          throw new Error(txt || "Erro ao inscrever no encontro");
+        }
+      }
 
-      // 3. Atualizar lista local
-      const userData = usuarios.find((u) => u.id === loggedUserId) ?? ({ id: loggedUserId } as Usuario);
+      // 4. Atualiza estado local
+      const currentUsuarios = usuariosRef.current;
+      const userData =
+        currentUsuarios.find((u) => u.id === loggedUserId) ??
+        ({ id: loggedUserId, nome: "Você" } as Usuario);
 
       setEventos((prev) =>
-        prev.map((ev) =>
-          ev.id === evento.id
-            ? {
+        prev.map((ev) => {
+          const matchByBackend =
+            backendId != null && ev.backendId === backendId;
+          const matchByLocalId = ev.id === evento.id;
+          if (matchByBackend || matchByLocalId) {
+            if (ev.participantes.some((p) => p.id === userData.id)) return ev;
+            return {
               ...ev,
-              backendId,
+              backendId: backendId ?? ev.backendId,
               participantes: [...ev.participantes, userData],
-            }
-            : ev
-        )
+            };
+          }
+          return ev;
+        })
       );
 
-      alert("Inscrição realizada com sucesso!");
+      eventosRef.current = eventosRef.current.map((ev) => {
+        const matchByBackend = backendId != null && ev.backendId === backendId;
+        const matchByLocalId = ev.id === evento.id;
+        if (matchByBackend || matchByLocalId) {
+          if (ev.participantes.some((p) => p.id === userData.id)) return ev;
+          return {
+            ...ev,
+            backendId: backendId ?? ev.backendId,
+            participantes: [...ev.participantes, userData],
+          };
+        }
+        return ev;
+      });
+
+      setUsuarioEncontroId(backendId ?? null);
+
+      // Mostra modal de sucesso ao invés de alert
+      // Mostra modal de sucesso e redireciona para home após um tempo
+      setShowSuccessModal(true);
+
+      // Atualiza os dados imediatamente antes do redirecionamento
+      await carregarEncontros();
+
+      // Redireciona para home após 2 segundos
+      setTimeout(() => {
+        setShowSuccessModal(false);
+        router.push("/home");
+      }, 2000);
     } catch (err: any) {
       console.error(err);
-      alert(err.message);
+      alert(err.message ?? "Erro ao participar");
     } finally {
       setBusyEncontroIds((s) => {
         const c = { ...s };
@@ -382,6 +546,9 @@ export default function EncontroPage() {
     }
   }
 
+  // =========================
+  // RENDER
+  // =========================
   if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -408,29 +575,21 @@ export default function EncontroPage() {
           <span className="text-[#F5A623]">ê!</span>
         </h1>
 
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        <h2 className="text-xl font-semibold text-gray-900 mb-6">
           Olá {usuarios.find((u) => u.id === loggedUserId)?.nome ?? "amigo"} 👋
         </h2>
 
-        <h3 className="text-2xl font-bold text-gray-900 mb-4">
-          Conheça Pessoas em Blumenau!
-        </h3>
-
         <p className="text-lg font-medium text-gray-900 mb-6">
-          Escolha o local do encontro:
+          Escolha a data do seu encontro:
         </p>
 
-        <select
-          value={selectedLocalId}
-          onChange={(e) => setSelectedLocalId(e.target.value)}
-          className="border-2 border-gray-900 rounded-full px-4 py-3 mb-6 w-full max-w-sm"
-        >
-          {locais.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.nome} – {l.endereco}
-            </option>
-          ))}
-        </select>
+        {/* Local fixo - não mais selecionável */}
+        <div className="border-2 border-gray-900 rounded-full px-4 py-3 mb-6 w-full max-w-sm text-center bg-gray-50">
+          <p className="font-semibold">Restaurante Bella Itália</p>
+          <p className="text-sm text-gray-600">
+            Rua das Flores, 123 - Centro, Blumenau
+          </p>
+        </div>
 
         <p className="text-lg font-medium text-gray-900 mb-4">
           Reserve seu próximo evento:
@@ -442,6 +601,20 @@ export default function EncontroPage() {
             .map((ev) => {
               const compat = countCompatibles(ev);
               const vagas = 5 - ev.participantes.length;
+
+              const usuarioJaAqui =
+                !!loggedUserId &&
+                ev.participantes.some((p) => p.id === loggedUserId);
+
+              const usuarioEmOutro =
+                !!usuarioEncontroId &&
+                usuarioEncontroId !== ev.backendId &&
+                usuarioEncontroId !== null;
+
+              const disabledBecauseOther = !usuarioJaAqui && usuarioEmOutro;
+              const disabledBecauseBusy = busyEncontroIds[ev.id] ?? false;
+              const buttonDisabled =
+                disabledBecauseOther || disabledBecauseBusy;
 
               return (
                 <div
@@ -462,35 +635,87 @@ export default function EncontroPage() {
                           : "Nenhuma compatibilidade ainda ❤️"}
                       </p>
                       <p className="text-sm text-gray-600">{vagas} vaga(s)</p>
+                      <p className="text-sm text-gray-600 font-medium mt-1">
+                        Local: Restaurante Bella Itália
+                      </p>
                     </div>
                   </div>
 
                   <div className="flex flex-col items-end gap-2">
-                    <button
-                      onClick={() => handleParticipar(ev)}
-                      className="bg-[#4A90E2] text-white px-4 py-2 rounded-full font-semibold"
-                    >
-                      Participar
-                    </button>
+                    {!usuarioJaAqui && (
+                      <button
+                        onClick={() => handleParticipar(ev)}
+                        disabled={buttonDisabled}
+                        className={`text-white px-4 py-2 rounded-full font-semibold ${
+                          buttonDisabled
+                            ? "bg-gray-400 cursor-not-allowed"
+                            : "bg-[#4A90E2]"
+                        }`}
+                      >
+                        {disabledBecauseOther
+                          ? "Você já está em outro encontro"
+                          : disabledBecauseBusy
+                          ? "Aguarde..."
+                          : "Participar"}
+                      </button>
+                    )}
 
-                    <button
-                      onClick={() => {
-                        const names =
-                          ev.participantes
-                            .map((p) => p.nome ?? p.email ?? p.id)
-                            .join(", ") || "Nenhum participante";
-                        alert(`Participantes:\n${names}`);
-                      }}
-                      className="text-sm underline text-gray-700"
-                    >
-                      Ver participantes ({ev.participantes.length})
-                    </button>
+                    {usuarioJaAqui && (
+                      <div className="text-sm text-green-700 font-semibold">
+                        Inscrito
+                      </div>
+                    )}
                   </div>
                 </div>
               );
             })}
         </div>
       </div>
+
+      {/* Modal de Sucesso */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+            onClick={() => setShowSuccessModal(false)}
+          />
+          <div className="relative bg-white rounded-3xl p-8 w-full max-w-sm mx-4 shadow-xl">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg
+                  className="w-8 h-8 text-green-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M5 13l4 4L19 7"
+                  ></path>
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                Inscrição Realizada!
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Você foi inscrito no encontro com sucesso. Aguarde a confirmação
+                dos outros participantes.
+              </p>
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  router.push("/home");
+                }}
+                className="w-full bg-[#4A90E2] text-white rounded-full py-3 font-semibold hover:bg-[#3a80d2] transition-colors"
+              >
+                Voltar para Home
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

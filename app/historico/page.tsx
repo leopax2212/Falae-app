@@ -81,7 +81,7 @@ export default function HistoricoPage() {
                   </button>
                 ) : (
                   <div className="w-full bg-white px-4 py-3 text-center">
-                    <p className="font-bold text-gray-900 text-sm">FEED BACK INDISPONÍVEL</p>
+                    <p className="font-bold text-gray-900 text-sm">FEEDBACK INDISPONÍVEL</p>
                   </div>
                 )}
               </div>
