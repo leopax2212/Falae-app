@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 
-// Tipagens simples
+// Tipagens
 interface Usuario {
   id?: string;
   nome?: string;
@@ -13,11 +13,7 @@ interface Usuario {
   cidade?: string;
   email?: string;
   senha?: string;
-  preferencias?: string[]; // opcional localmente
-}
-
-interface PreferenciasResp {
-  preferencias: string[] | string[]; // se seu endpoint devolver só array, ajuste
+  preferencias?: string[];
 }
 
 interface LocalEncontro {
@@ -33,18 +29,18 @@ interface EncontroBackend {
   id: string;
   localId: string;
   dataHora: string;
-  participantes?: string[]; // array de usuarioId
+  participantes?: string[];
   minimoPreferenciasIguais?: number;
 }
 
 interface Evento {
-  id: string; // local id ou "auto-<dias>"
+  id: string;
   localId: string;
   dataHoraISO: string;
   displayDate: string;
   displayTime: string;
-  participantes: Usuario[]; // participantes completos (obj Usuario)
-  backendId?: string; // se existir ja criado no backend
+  participantes: Usuario[];
+  backendId?: string;
 }
 
 export default function EncontroPage() {
@@ -57,29 +53,37 @@ export default function EncontroPage() {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [selectedLocalId, setSelectedLocalId] = useState<string>("");
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [encontrosBackend, setEncontrosBackend] = useState<EncontroBackend[]>(
     []
   );
+
   const [busyEncontroIds, setBusyEncontroIds] = useState<
     Record<string, boolean>
   >({});
 
-  // pega id do usuário logado (assumo localStorage 'user' com campo id)
+  // pega id do user logado - VERSÃO MAIS ROBUSTA
+  // pega id do user logado - CORRIGIDO
   const loggedUserId = useMemo(() => {
     try {
-      const raw =
-        typeof window !== "undefined" ? localStorage.getItem("user") : null;
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return parsed?.id ?? parsed?.userId ?? null;
+      const raw = typeof window !== "undefined" ? localStorage.getItem("usuarioId") : null;
+      console.log('🔍 DEBUG - usuarioId do localStorage:', raw);
+
+      if (!raw) {
+        console.log('❌ Nenhum usuarioId encontrado no localStorage');
+        return null;
+      }
+
+      // Como você está salvando diretamente o ID como string, não precisa fazer JSON.parse
+      return raw;
     } catch {
       return null;
     }
   }, []);
 
-  // Datas: hoje + 7, +9, +10 dias às 20:00 (dinâmico)
+  // gerar datas automáticas (7,9,10 dias)
   function makeEventDates() {
     const base = new Date();
     const addDays = (n: number) => {
@@ -89,63 +93,39 @@ export default function EncontroPage() {
       return d;
     };
     const days = [7, 9, 10];
+
     return days.map((d) => {
       const dt = addDays(d);
-      const iso = dt.toISOString();
-      const options: Intl.DateTimeFormatOptions = {
-        day: "2-digit",
-        month: "long",
+      return {
+        days: d,
+        iso: dt.toISOString(),
+        displayDate: dt.toLocaleDateString("pt-BR", {
+          day: "2-digit",
+          month: "long",
+        }),
+        displayTime: dt.toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
       };
-      const displayDate = dt.toLocaleDateString("pt-BR", options);
-      const displayTime = dt.toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      return { days: d, iso, displayDate, displayTime };
     });
   }
 
-  // Carrega tudo no mount
+  // carregamento principal
   useEffect(() => {
     async function loadAll() {
       setLoading(true);
       try {
-        // 1) locais (mock por enquanto)
+        // 1. Locais — AGORA VIA BFF
         try {
-          const resLoc = await fetch(
-            "http://localhost:5245/api/LocaisEncontro"
-          );
+          const resLoc = await fetch("http://localhost:8081/bff/locais");
           if (resLoc.ok) {
             const data = await resLoc.json();
-            // suportar array ou objeto
-            setLocais(Array.isArray(data) ? data : [data]);
-            if ((Array.isArray(data) ? data : [data]).length > 0) {
-              setSelectedLocalId(
-                ((Array.isArray(data) ? data : [data])[0] as LocalEncontro)
-                  .id ?? ""
-              );
-            }
+            const arr = Array.isArray(data) ? data : [data];
+            setLocais(arr);
+            setSelectedLocalId(arr[0]?.id ?? "");
           } else {
-            // fallback: locais estáticos
-            setLocais([
-              {
-                id: "1",
-                nome: "Restaurante Bella Itália",
-                endereco: "Rua das Flores, 123",
-                capacidade: 20,
-                ativo: true,
-                imagemUrl: "https://picsum.photos/200",
-              },
-              {
-                id: "2",
-                nome: "Hamburgueria Smash House",
-                endereco: "Av. Central, 456",
-                capacidade: 15,
-                ativo: true,
-                imagemUrl: "https://picsum.photos/201",
-              },
-            ]);
-            setSelectedLocalId("1");
+            throw new Error("Falha ao carregar locais");
           }
         } catch {
           setLocais([
@@ -169,244 +149,252 @@ export default function EncontroPage() {
           setSelectedLocalId("1");
         }
 
-        // 2) usuarios
+        // 2. Usuários — VIA BFF
         const resUsers = await fetch("http://localhost:8081/bff/usuarios");
-        if (!resUsers.ok) throw new Error("Falha ao carregar usuários.");
-        let udata = await resUsers.json();
-        // lidar com retorno único ou array
-        let usersArray: Usuario[] = [];
-        if (Array.isArray(udata)) usersArray = udata;
-        else if (udata && typeof udata === "object") {
-          // às vezes o backend envia um objeto wrapper
-          if (udata.items && Array.isArray(udata.items))
-            usersArray = udata.items;
-          else usersArray = [udata];
-        }
+        if (!resUsers.ok) throw new Error("Falha ao carregar usuários");
+
+        const udata = await resUsers.json();
+        const usersArray = Array.isArray(udata)
+          ? udata
+          : udata.items
+            ? udata.items
+            : [udata];
+
         setUsuarios(usersArray);
 
-        // 3) buscar preferencias de cada usuario (paralelo)
+        // CORREÇÃO TEMPORÁRIA NO FRONTEND - apenas para teste
+        // 3. Preferências por usuário — CORREÇÃO DA URL
         const prefsMap: Record<string, string[]> = {};
+
         await Promise.allSettled(
-          usersArray.map(async (u) => {
-            const uid = u.id ?? u.email ?? u.cpf ?? JSON.stringify(u); // fallback id
+          usersArray.map(async (u: Usuario) => {
+            const uid = u.id!;
             try {
-              const r = await fetch(
-                `http://localhost:5245/api/Preferencias/usuario/${uid}`
-              );
+              // ENQUANTO O BFF NÃO É CORRIGIDO, podemos testar chamando o .NET diretamente:
+              const r = await fetch(`http://localhost:8081/bff/preferencias/usuario/${uid}`);
+
               if (!r.ok) {
-                prefsMap[uid] = u.preferencias ?? [];
+                console.warn(`Erro ${r.status} ao buscar preferências do usuário ${uid}`);
+                prefsMap[uid] = [];
                 return;
               }
-              const p = await r.json();
-              // caso endpoint retorne array diretamente
-              if (Array.isArray(p)) prefsMap[uid] = p;
-              else if (p && (p.preferencias || p.data))
-                prefsMap[uid] = p.preferencias ?? p.data ?? [];
-              else prefsMap[uid] = [];
-            } catch {
-              prefsMap[uid] = u.preferencias ?? [];
+
+              const prefResp = await r.json();
+              console.log(`✅ Resposta do backend .NET para usuário ${uid}:`, prefResp);
+
+              // Processamento normal...
+              if (Array.isArray(prefResp)) {
+                const preferencias: string[] = [];
+                prefResp.forEach((prefObj) => {
+                  const camposPreferencia = [
+                    'horarioFavorito', 'tipoComidaFavorito', 'preferenciaLocal',
+                    'preferenciaAmbiente', 'posicaoPolitica', 'genero',
+                    'preferenciaMusical', 'moodFilmesSeries', 'statusRelacionamento',
+                    'preferenciaAnimal', 'idiomaPreferido', 'investimentoEncontro', 'fraseDefinicao'
+                  ];
+
+                  camposPreferencia.forEach((campo) => {
+                    const valor = prefObj[campo];
+                    if (valor && typeof valor === 'string' && valor.trim() !== '') {
+                      preferencias.push(valor.trim());
+                    }
+                  });
+                });
+
+                prefsMap[uid] = [...new Set(preferencias)];
+              } else {
+                prefsMap[uid] = [];
+              }
+
+            } catch (error) {
+              console.error(`Erro ao processar preferências do usuário ${uid}:`, error);
+              prefsMap[uid] = [];
             }
           })
         );
-        setUsuariosPrefs(prefsMap);
 
-        // 4) buscar encontros no backend (se existir)
+        // 4. Encontros — VIA BFF
         try {
-          const rE = await fetch("http://localhost:5245/api/Encontros");
+          const rE = await fetch("http://localhost:8081/bff/encontros");
           if (rE.ok) {
             const backendEncs = await rE.json();
             setEncontrosBackend(
               Array.isArray(backendEncs) ? backendEncs : [backendEncs]
             );
           }
-        } catch {
-          // sem encontros no backend -> ok, vamos criar localmente
-        }
+        } catch { }
 
-        // 5) criar eventos locais (7,9,10 dias) e vincular participantes caso backend tenha encontros com mesma data/local
+        // 5. Criar eventos locais + anexar inscritos vindos do backend
         const dateInfos = makeEventDates();
-        const builtEvents: Evento[] = dateInfos.map((di, idx) => {
-          // tentar achar encontro backend com mesma data (mesmo iso) para anexar participantes
-          const found = (encontrosBackend ?? []).find((eb) => {
-            try {
-              // comparar datas simplificadas
-              return (
-                new Date(eb.dataHora).toISOString() ===
-                new Date(di.iso).toISOString()
-              );
-            } catch {
-              return false;
-            }
-          });
 
-          const participantsUsers: Usuario[] = [];
-          if (
-            found &&
-            found.participantes &&
-            Array.isArray(found.participantes)
-          ) {
-            // mapear ids -> usuarios completos (se achados)
-            found.participantes.forEach((pid) => {
-              const u = usersArray.find(
-                (uu) => uu.id === pid || uu.email === pid || uu.cpf === pid
-              );
-              if (u) participantsUsers.push(u);
-            });
+        const builtEvents: Evento[] = dateInfos.map((di) => {
+          const found = (encontrosBackend ?? []).find(
+            (eb) =>
+              new Date(eb.dataHora).toISOString() === di.iso &&
+              eb.localId === selectedLocalId
+          );
+
+          let participantesUsers: Usuario[] = [];
+
+          if (found?.participantes) {
+            participantesUsers = found.participantes
+              .map((pid) => usersArray.find((u: Usuario) => u.id === pid) ?? null)
+              .filter((u): u is Usuario => u !== null);
           }
 
           return {
             id: `auto-${di.days}`,
-            localId: selectedLocalId || (locais[0] && locais[0].id) || "1",
+            localId: selectedLocalId,
             dataHoraISO: di.iso,
             displayDate: di.displayDate,
             displayTime: di.displayTime,
-            participantes: participantsUsers,
+            participantes: participantesUsers,
             backendId: found?.id,
           };
         });
 
         setEventos(builtEvents);
-      } catch (err: any) {
-        console.error(err);
-        setError(err?.message ?? "Erro desconhecido");
+      } catch (e: any) {
+        console.error(e);
+        setError(e.message ?? "Erro desconhecido");
       } finally {
         setLoading(false);
       }
     }
 
     loadAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // recalcula compatíveis para o user logado dentro de um evento
+  // compatibilidade
   function countCompatibles(evento: Evento): number {
     if (!loggedUserId) return 0;
-    // preferências do logado
     const loggedPrefs = usuariosPrefs[loggedUserId] ?? [];
-    if (!loggedPrefs || loggedPrefs.length === 0) {
-      // sem prefs do logado: não conseguimos determinar, mostrar 0
-      return 0;
-    }
+
+    if (loggedPrefs.length === 0) return 0;
+
     let count = 0;
+
     evento.participantes.forEach((p) => {
-      const pid = p.id ?? p.email ?? p.cpf ?? "";
+      const pid = p.id!;
       const pPrefs = usuariosPrefs[pid] ?? [];
-      const intersection = pPrefs.filter((x) => loggedPrefs.includes(x));
-      if (intersection.length > 0) count++;
+      const inter = pPrefs.filter((x) => loggedPrefs.includes(x));
+      if (inter.length > 0) count++;
     });
+
     return count;
   }
 
-  // checa se evento está lotado (>=5)
-  function isLotado(evento: Evento) {
-    return evento.participantes.length >= 5;
+  function isLotado(ev: Evento) {
+    return ev.participantes.length >= 5;
   }
 
-  // Quando usuário clicar para participar
+  // Clique "Participar"
+  // Clique "Participar" - CORRIGIDO
   async function handleParticipar(evento: Evento) {
+    console.log('🔍 DEBUG handleParticipar - usuarioId:', loggedUserId);
+
     if (!loggedUserId) {
       alert("Você precisa estar logado para participar.");
       return;
     }
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Token não encontrado — precisa logar novamente.");
-      return;
-    }
+    // Como você não está salvando token no login, vamos verificar se tem o usuarioId
+    const token = localStorage.getItem("token"); // Isso pode ser null
+    console.log('🔍 DEBUG - token:', token);
 
     if (busyEncontroIds[evento.id]) return;
+
     setBusyEncontroIds((s) => ({ ...s, [evento.id]: true }));
 
     try {
       let backendId = evento.backendId;
 
-      // 1. Criar encontro no backend, via BFF
+      // 1. Criar encontro se ainda não existir
       if (!backendId) {
         const payload = {
-          localId: evento.localId,
+          localId: selectedLocalId,
           dataHora: evento.dataHoraISO,
           minimoPreferenciasIguais: 0,
         };
 
-        const createResp = await fetch("http://localhost:8081/bff/encontros", {
+        const headers: HeadersInit = {
+          "Content-Type": "application/json",
+        };
+
+        // Só adiciona Authorization se tiver token
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+
+        const resp = await fetch("http://localhost:8081/bff/encontros", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: headers,
           body: JSON.stringify(payload),
         });
 
-        if (!createResp.ok) throw new Error("Falha ao criar encontro");
+        if (!resp.ok) throw new Error("Erro ao criar encontro");
 
-        const created = await createResp.json();
-        backendId = created?.id ?? created?.data?.id;
-        setEncontrosBackend((s) => [...s, created]);
+        const created = await resp.json();
+        backendId = created.id;
       }
 
-      // 2. Inscrever usuário no encontro via BFF
-      const inscricaoResp = await fetch(
+      // 2. Inscrever usuário
+      const headers: HeadersInit = {};
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const resp2 = await fetch(
         `http://localhost:8081/bff/encontros/${backendId}/participantes/${loggedUserId}`,
         {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: headers,
         }
       );
 
-      if (!inscricaoResp.ok) throw new Error("Falha ao inscrever no encontro.");
+      if (!resp2.ok) throw new Error("Erro ao inscrever no encontro");
 
       // 3. Atualizar lista local
+      const userData = usuarios.find((u) => u.id === loggedUserId) ?? ({ id: loggedUserId } as Usuario);
+
       setEventos((prev) =>
-        prev.map((ev) => {
-          if (ev.backendId === backendId || ev.id === evento.id) {
-            const already = ev.participantes.some((p) => p.id === loggedUserId);
-            if (already) return ev;
-
-            const u = usuarios.find((uu) => uu.id === loggedUserId) ?? {
-              id: loggedUserId,
-              nome: "Você",
-            };
-
-            return {
+        prev.map((ev) =>
+          ev.id === evento.id
+            ? {
               ...ev,
-              participantes: [...ev.participantes, u],
               backendId,
-            };
-          }
-          return ev;
-        })
+              participantes: [...ev.participantes, userData],
+            }
+            : ev
+        )
       );
 
       alert("Inscrição realizada com sucesso!");
     } catch (err: any) {
       console.error(err);
-      alert("Erro ao participar: " + err.message);
+      alert(err.message);
     } finally {
       setBusyEncontroIds((s) => {
-        const copy = { ...s };
-        delete copy[evento.id];
-        return copy;
+        const c = { ...s };
+        delete c[evento.id];
+        return c;
       });
     }
   }
 
-  if (loading) {
+  if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p>Carregando encontros e usuários...</p>
+        Carregando...
       </div>
     );
-  }
-  if (error) {
+
+  if (error)
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p>Erro: {error}</p>
+        Erro: {error}
       </div>
     );
-  }
 
   return (
     <div className="min-h-screen bg-white flex flex-col px-6 pt-8">
@@ -450,18 +438,18 @@ export default function EncontroPage() {
 
         <div className="w-full max-w-md space-y-4">
           {eventos
-            .map((ev) => ({ ...ev, localId: selectedLocalId || ev.localId }))
-            .filter((ev) => !isLotado(ev)) // esconde lotados
+            .filter((ev) => !isLotado(ev))
             .map((ev) => {
               const compat = countCompatibles(ev);
               const vagas = 5 - ev.participantes.length;
+
               return (
                 <div
                   key={ev.id}
                   className="w-full border-2 border-gray-900 rounded-2xl p-4 flex items-center gap-4 justify-between"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-[#F5A623] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <div className="w-12 h-12 bg-[#F5A623] rounded-lg flex items-center justify-center">
                       <div className="text-white text-2xl">🍽️</div>
                     </div>
                     <div>
@@ -470,36 +458,30 @@ export default function EncontroPage() {
                       </p>
                       <p className="text-sm text-gray-600">
                         {compat > 0
-                          ? `${compat} pessoas compatíveis estão nesse encontro ✨`
-                          : "Nenhuma compatibilidade encontrada — ainda assim você pode participar ❤️"}
+                          ? `${compat} pessoas compatíveis nesse encontro ✨`
+                          : "Nenhuma compatibilidade ainda ❤️"}
                       </p>
-                      <p className="text-sm text-gray-600">
-                        {vagas} vaga(s) restante(s)
-                      </p>
+                      <p className="text-sm text-gray-600">{vagas} vaga(s)</p>
                     </div>
                   </div>
 
                   <div className="flex flex-col items-end gap-2">
                     <button
-                      onClick={() =>
-                        handleParticipar({ ...ev, localId: selectedLocalId })
-                      }
-                      disabled={busyEncontroIds[ev.id]}
-                      className="bg-[#4A90E2] text-white px-4 py-2 rounded-full font-semibold hover:opacity-95 disabled:opacity-60"
+                      onClick={() => handleParticipar(ev)}
+                      className="bg-[#4A90E2] text-white px-4 py-2 rounded-full font-semibold"
                     >
                       Participar
                     </button>
 
                     <button
                       onClick={() => {
-                        // mostrar modal simples com participantes
                         const names =
                           ev.participantes
                             .map((p) => p.nome ?? p.email ?? p.id)
-                            .join(", ") || "Nenhum participante ainda";
+                            .join(", ") || "Nenhum participante";
                         alert(`Participantes:\n${names}`);
                       }}
-                      className="text-sm text-gray-700 underline"
+                      className="text-sm underline text-gray-700"
                     >
                       Ver participantes ({ev.participantes.length})
                     </button>
