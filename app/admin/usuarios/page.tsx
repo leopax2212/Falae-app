@@ -1,29 +1,29 @@
-"use client"
+"use client";
 
-import { Logo } from "@/components/logo"
-import { useState, useMemo, useEffect } from "react"
-import Link from "next/link"
-import { ChevronLeft, ChevronRight, Search } from "lucide-react"
+import { Logo } from "@/components/logo";
+import { useState, useMemo, useEffect } from "react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 interface Usuario {
-  id: string
-  nome: string
-  cpf: string
-  email: string
-  telefone?: string
+  id: string;
+  nome: string;
+  cpf: string;
+  email: string;
+  telefone?: string;
 }
 
-const ITEMS_PER_PAGE = 10
+const ITEMS_PER_PAGE = 10;
 
 export default function UsuariosPage() {
-  const [usuarios, setUsuarios] = useState<Usuario[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     async function loadData() {
-      const resp = await fetch("http://localhost:8081/bff/usuarios")
-      const data = await resp.json()
+      const resp = await fetch("http://localhost:8081/bff/usuarios");
+      const data = await resp.json();
 
       // Normaliza para garantir que sempre exista nome/email
       const normalizados: Usuario[] = data.map((u: any) => ({
@@ -31,26 +31,26 @@ export default function UsuariosPage() {
         nome: u.nome ?? "",
         cpf: u.cpf ?? "",
         email: u.email ?? "",
-        telefone: u.telefone ?? "" // backend não envia, mas deixa preparado
-      }))
+        telefone: u.telefone ?? "", // backend não envia, mas deixa preparado
+      }));
 
-      setUsuarios(normalizados)
+      setUsuarios(normalizados);
     }
 
-    loadData()
-  }, [])
+    loadData();
+  }, []);
 
   const filteredUsuarios = useMemo(() => {
     return usuarios.filter((user) =>
       (user.nome ?? "").toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  }, [searchTerm, usuarios])
+    );
+  }, [searchTerm, usuarios]);
 
-  const totalPages = Math.ceil(filteredUsuarios.length / ITEMS_PER_PAGE)
+  const totalPages = Math.ceil(filteredUsuarios.length / ITEMS_PER_PAGE);
   const paginatedUsuarios = filteredUsuarios.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
-  )
+  );
 
   return (
     <div className="flex min-h-screen flex-col bg-white pb-8">
@@ -66,17 +66,17 @@ export default function UsuariosPage() {
               placeholder="Pesquisar por nome..."
               value={searchTerm}
               onChange={(e) => {
-                setSearchTerm(e.target.value)
-                setCurrentPage(1)
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
               }}
               className="flex-1 bg-transparent outline-none"
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-4">
             {paginatedUsuarios.map((user) => (
               <Link key={user.id} href={`/admin/usuarios/${user.id}`}>
-                <button className="w-full rounded-full border-2 border-black bg-white px-6 py-3 text-base font-semibold transition-colors hover:bg-gray-50">
+                <button className="w-full rounded-full border-2 border-black bg-white px-6 py-4 text-base font-semibold transition-colors hover:bg-gray-50">
                   {user.nome}
                 </button>
               </Link>
@@ -98,7 +98,9 @@ export default function UsuariosPage() {
               </span>
 
               <button
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                onClick={() =>
+                  setCurrentPage(Math.min(totalPages, currentPage + 1))
+                }
                 disabled={currentPage === totalPages}
                 className="disabled:opacity-50"
               >
@@ -115,5 +117,5 @@ export default function UsuariosPage() {
         </Link>
       </div>
     </div>
-  )
+  );
 }
