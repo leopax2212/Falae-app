@@ -38,17 +38,38 @@ export default function LoginPage() {
 
       const data = await res.json();
 
-      // Aqui depende do que o backend retorna
-      const userId =
-        data.id || data.usuarioId || data.userId || data?.usuario?.id || null;
-
-      if (!userId) {
-        console.error("ID NÃO ENCONTRADO NO LOGIN", data);
+      // 🔥 CORREÇÃO: SALVAR O TOKEN JWT
+      const token = data.token || data.accessToken || data.jwt;
+      if (!token) {
+        console.error("Token não encontrado na resposta:", data);
+        alert("Erro: Token não recebido do servidor");
+        return;
       }
 
+      const userId =
+        data.id || data.usuarioId || data.userId || data?.usuario?.id;
+      const userName = data.nome || data?.usuario?.nome;
+      const userEmail = data.email || data?.usuario?.email;
+
+      // 🔥 SALVAR TODOS OS DADOS NO LOCALSTORAGE
+      localStorage.setItem("token", `Bearer ${token}`); // ← ESSENCIAL!
       localStorage.setItem("usuarioId", userId);
-      localStorage.setItem("userName", data.nome || data?.usuario?.nome);
-      localStorage.setItem("userEmail", data.email || data?.usuario?.email);
+      localStorage.setItem("userName", userName);
+      localStorage.setItem("userEmail", userEmail);
+
+      // 🔥 SALVAR OBJETO COMPLETO DO USUÁRIO TAMBÉM
+      localStorage.setItem(
+        "usuario",
+        JSON.stringify({
+          id: userId,
+          nome: userName,
+          email: userEmail,
+        })
+      );
+
+      console.log("✅ Login realizado com sucesso!");
+      console.log("🔑 Token salvo:", `Bearer ${token}`);
+      console.log("👤 Usuário:", userName);
 
       router.push("/home");
     } catch (e) {

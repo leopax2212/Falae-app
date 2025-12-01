@@ -1,284 +1,345 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import BottomNavigation from "@/components/bottom-navigation"
 
-type ScheduledEvent = {
-  id: number
-  type: string
-  date: string
-  time: string
-  location: string
-} | null
-
-type ApiEncontro = {
+type Usuario = {
   id: string
-  tipo: string
-  data: string
-  horario: string
-  local: string
+  nome: string
+  email: string
+  cidade: string
+}
+
+type Local = {
+  id: string
+  nome: string
+  endereco: string
+  capacidade: number
+  ativo: boolean
+  imagemUrl: string
+}
+
+type Encontro = {
+  id: string
   localId: string
+  local: Local
+  dataHora: string
+  status: string
+  dataCriacao: string
+  participantes: Usuario[]
+  totalParticipantes: number
+}
+
+type MatchingResponse = {
+  sucesso: boolean
+  mensagem: string
+  participantesSugeridos: Usuario[]
+  preferenciasCompativeis: number
 }
 
 export default function HomePage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const [showCancelModal, setShowCancelModal] = useState(false)
   const [showMessage, setShowMessage] = useState(false)
   const [message, setMessage] = useState("")
-  const [loading, setLoading] = useState(true)
-  const [eventToCancel, setEventToCancel] = useState<ScheduledEvent>(null)
+  const [showModal, setShowModal] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<string>("")
+  const [loading, setLoading] = useState(false)
+  const [usuario, setUsuario] = useState<Usuario | null>(null)
+  const [encontro, setEncontro] = useState<Encontro | null>(null)
+  const [locais, setLocais] = useState<Local[]>([])
 
-  const [scheduledEvent, setScheduledEvent] = useState<ScheduledEvent>(null)
-  const [showAddButton, setShowAddButton] = useState(false)
-
-  // Buscar encontros do usuário
   useEffect(() => {
-    const fetchEncontros = async () => {
-      try {
-        setLoading(true)
-        
-        // Pega o ID do usuário logado
-        const usuarioId = typeof window !== "undefined" ? localStorage.getItem("usuarioId") : null
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null
-        
-        if (!usuarioId) {
-          console.log("Usuário não logado")
-          setScheduledEvent(null)
-          setShowAddButton(true)
-          setLoading(false)
-          return
-        }
-
-        console.log("Buscando encontros para usuário:", usuarioId)
-        
-        const headers: HeadersInit = {
-          "Content-Type": "application/json",
-        }
-        if (token) {
-          headers.Authorization = token
-        }
-
-        const response = await fetch("http://localhost:8081/bff/encontros", {
-          method: "GET",
-          headers,
-        })
-
-        if (response.ok) {
-          const encontros: ApiEncontro[] = await response.json()
-          console.log("Encontros recebidos:", encontros)
-          
-          // Busca informações do local para o encontro
-          let encontroDoUsuario = null
-          let localInfo = "Restaurante Bella Itália" // default
-
-          // Primeiro, encontra o encontro onde o usuário está participando
-          for (const encontro of encontros) {
-            // Busca participantes deste encontro
-            const participantesResponse = await fetch(`http://localhost:8081/bff/encontros/${encontro.id}/participantes`, {
-              headers
-            })
-            
-            if (participantesResponse.ok) {
-              const participantes = await participantesResponse.json()
-              const usuarioEstaNoEncontro = participantes.some((p: any) => 
-                p.id === usuarioId || (typeof p === 'string' && p === usuarioId)
-              )
-              
-              if (usuarioEstaNoEncontro) {
-                encontroDoUsuario = encontro
-                
-                // Busca informações do local
-                try {
-                  const localResponse = await fetch(`http://localhost:8081/bff/locais/${encontro.localId}`, {
-                    headers
-                  })
-                  if (localResponse.ok) {
-                    const localData = await localResponse.json()
-                    localInfo = localData.nome || "Restaurante Bella Itália"
-                  }
-                } catch (error) {
-                  console.error("Erro ao buscar local:", error)
-                }
-                break
-              }
-            }
-          }
-
-          if (encontroDoUsuario) {
-            const eventDate = new Date(encontroDoUsuario.data)
-            const formattedEvent = {
-              id: parseInt(encontroDoUsuario.id),
-              type: encontroDoUsuario.tipo || "Jantar",
-              date: eventDate.toLocaleDateString('pt-BR', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long'
-              }),
-              time: encontroDoUsuario.horario,
-              location: localInfo
-            }
-            
-            setScheduledEvent(formattedEvent)
-            
-            // Verifica se o encontro já terminou
-            const eventEnded = checkIfEventEnded(encontroDoUsuario.data, encontroDoUsuario.horario)
-            setShowAddButton(eventEnded)
-            console.log("Encontro encontrado:", formattedEvent, "Evento terminado:", eventEnded)
-          } else {
-            setScheduledEvent(null)
-            setShowAddButton(true)
-            console.log("Nenhum encontro encontrado para o usuário")
-          }
-        } else {
-          console.error("Erro ao buscar encontros:", response.status)
-          setScheduledEvent(null)
-          setShowAddButton(true)
-        }
-      } catch (error) {
-        console.error("Erro na requisição:", error)
-        setScheduledEvent(null)
-        setShowAddButton(true)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchEncontros()
+    carregarDadosUsuario()
+    carregarEncontro()
+    carregarLocais()
   }, [])
 
-  useEffect(() => {
-    const msg = searchParams.get("message")
-    if (msg) {
-      setMessage(msg)
-      setShowMessage(true)
-      setTimeout(() => setShowMessage(false), 3000)
-    }
-  }, [searchParams])
-
-  const checkIfEventEnded = (dateString: string, timeString: string): boolean => {
+  const carregarDadosUsuario = async () => {
     try {
-      const [hours, minutes] = timeString.split(':').map(Number)
-      const eventDateTime = new Date(dateString)
-      eventDateTime.setHours(hours, minutes, 0, 0)
+      const token = localStorage.getItem("token")
+      const usuarioId = localStorage.getItem("usuarioId")
       
-      const now = new Date()
-      
-      return now > eventDateTime
-    } catch (error) {
-      console.error("Erro ao verificar data do evento:", error)
-      return false
-    }
-  }
-
-  const handleCancelClick = (event: ScheduledEvent) => {
-    setEventToCancel(event)
-    setShowCancelModal(true)
-  }
-
-  const handleCancel = async () => {
-    if (!eventToCancel) return
-
-    try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null
-      const usuarioId = typeof window !== "undefined" ? localStorage.getItem("usuarioId") : null
-      
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      }
-      if (token) {
-        headers.Authorization = token
+      if (!token || !usuarioId) {
+        console.error("Token ou usuarioId não encontrado")
+        return
       }
 
-      const response = await fetch(`http://localhost:8081/bff/encontros/${eventToCancel.id}/participantes/${usuarioId}`, {
-        method: "DELETE",
-        headers,
+      const response = await fetch(`http://localhost:8081/bff/usuarios/${usuarioId}`, {
+        headers: {
+          'Authorization': token
+        }
       })
 
       if (response.ok) {
-        setScheduledEvent(null)
-        setShowAddButton(true)
-        setMessage("Encontro cancelado com sucesso!")
-        setShowMessage(true)
-        setTimeout(() => setShowMessage(false), 3000)
+        const usuarioData = await response.json()
+        setUsuario(usuarioData)
       } else {
-        console.error("Erro ao cancelar encontro:", response.status)
-        setMessage("Erro ao cancelar encontro. Tente novamente.")
-        setShowMessage(true)
-        setTimeout(() => setShowMessage(false), 3000)
-      }
-    } catch (error) {
-      console.error("Erro na requisição de cancelamento:", error)
-      setMessage("Erro ao cancelar encontro. Tente novamente.")
-      setShowMessage(true)
-      setTimeout(() => setShowMessage(false), 3000)
-    } finally {
-      setShowCancelModal(false)
-      setEventToCancel(null)
-    }
-  }
-
-  // Verifica periodicamente se o encontro atual já terminou
-  useEffect(() => {
-    if (!scheduledEvent) return
-
-    const checkEventStatus = () => {
-      // Para simplificar, vamos apenas recarregar os encontros
-      const fetchEncontros = async () => {
-        try {
-          const usuarioId = typeof window !== "undefined" ? localStorage.getItem("usuarioId") : null
-          const token = typeof window !== "undefined" ? localStorage.getItem("token") : null
-          
-          if (!usuarioId) return
-
-          const headers: HeadersInit = {}
-          if (token) headers.Authorization = token
-
-          const response = await fetch("http://localhost:8081/bff/encontros", {
-            headers,
-          })
-
-          if (response.ok) {
-            const encontros: ApiEncontro[] = await response.json()
-            
-            const encontroDoUsuario = encontros.find(encontro => {
-              // Verificação simplificada - na prática precisaria buscar participantes
-              return true // Esta lógica precisa ser refinada
-            })
-
-            if (!encontroDoUsuario) {
-              setScheduledEvent(null)
-              setShowAddButton(true)
-            }
-          }
-        } catch (error) {
-          console.error("Erro ao verificar status do evento:", error)
+        // Fallback para dados do localStorage
+        const usuarioLocal = localStorage.getItem("usuario")
+        if (usuarioLocal) {
+          setUsuario(JSON.parse(usuarioLocal))
         }
       }
+    } catch (error) {
+      console.error("Erro ao carregar dados do usuário:", error)
+      // Fallback para dados do localStorage
+      const usuarioLocal = localStorage.getItem("usuario")
+      if (usuarioLocal) {
+        setUsuario(JSON.parse(usuarioLocal))
+      }
+    }
+  }
 
-      fetchEncontros()
+  const carregarLocais = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      
+      if (!token) {
+        console.error("Token não encontrado")
+        return
+      }
+
+      const response = await fetch("http://localhost:8081/bff/locais", {
+        headers: {
+          'Authorization': token
+        }
+      })
+
+      if (response.ok) {
+        const locaisData = await response.json()
+        console.log("🏢 Locais carregados:", locaisData)
+        setLocais(locaisData)
+      } else {
+        console.error("Erro ao carregar locais:", response.status)
+      }
+    } catch (error) {
+      console.error("Erro ao carregar locais:", error)
+    }
+  }
+
+  const carregarEncontro = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      const usuarioId = localStorage.getItem("usuarioId")
+      
+      if (!token || !usuarioId) {
+        return
+      }
+
+      const response = await fetch(`http://localhost:8081/bff/encontros/${usuarioId}`, {
+        headers: {
+          'Authorization': token
+        }
+      })
+
+      if (response.ok) {
+        const encontroData = await response.json()
+        setEncontro(encontroData)
+      }
+    } catch (error) {
+      console.error("Erro ao carregar encontro:", error)
+    }
+  }
+
+  const getProximosFinaisDeSemana = () => {
+    const hoje = new Date()
+    const diasParaSabado = (6 - hoje.getDay() + 7) % 7 || 7
+    const diasParaDomingo = (7 - hoje.getDay() + 7) % 7 || 7
+
+    const sabado = new Date(hoje)
+    sabado.setDate(hoje.getDate() + diasParaSabado)
+    sabado.setHours(20, 0, 0, 0)
+
+    const domingo = new Date(hoje)
+    domingo.setDate(hoje.getDate() + diasParaDomingo)
+    domingo.setHours(16, 0, 0, 0)
+
+    return [
+      { label: `Sábado ${sabado.toLocaleDateString('pt-BR')} 20:00`, value: sabado.toISOString() },
+      { label: `Domingo ${domingo.toLocaleDateString('pt-BR')} 16:00`, value: domingo.toISOString() }
+    ]
+  }
+
+  const handleCriarEncontro = async () => {
+    if (!selectedDate) {
+      alert("Por favor, selecione uma data")
+      return
     }
 
-    const interval = setInterval(checkEventStatus, 30000) // 30 segundos
+    if (locais.length === 0) {
+      alert("Nenhum local disponível. Tente novamente mais tarde.")
+      return
+    }
 
-    return () => clearInterval(interval)
-  }, [scheduledEvent])
+    setLoading(true)
+    try {
+      const token = localStorage.getItem("token")
+      const usuarioId = localStorage.getItem("usuarioId")
+      
+      if (!token || !usuarioId) {
+        alert("Usuário não autenticado")
+        return
+      }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white flex flex-col pb-20">
-        <div className="flex-1 flex flex-col items-center justify-center px-6">
-          <h1 className="text-5xl font-bold mb-8">
-            <span className="text-[#4A90E2]">Fala</span>
-            <span className="text-[#F5A623]">ê!</span>
-          </h1>
-          <p className="text-gray-600">Carregando seus encontros...</p>
-        </div>
-        <BottomNavigation />
-      </div>
-    )
+      console.log("🔑 Token:", token)
+      console.log("👤 Usuario ID:", usuarioId)
+      console.log("📅 Data selecionada:", selectedDate)
+
+      // Escolher um local aleatório da lista de locais ativos
+      const locaisAtivos = locais.filter(local => local.ativo)
+      if (locaisAtivos.length === 0) {
+        alert("Nenhum local ativo disponível")
+        return
+      }
+
+      const localAleatorio = locaisAtivos[Math.floor(Math.random() * locaisAtivos.length)]
+      console.log("🏢 Local escolhido:", localAleatorio)
+
+      // CORREÇÃO: Payload corrigido conforme seu exemplo
+      const matchingPayload = {
+        localId: localAleatorio.id,
+        dataHora: selectedDate,
+        minimoPreferenciasIguais: 3,
+        numeroParticipantes: 4
+      }
+
+      console.log("📤 Payload do matching:", matchingPayload)
+
+      // Fazer o matching
+      const matchingResponse = await fetch("http://localhost:8081/bff/encontros/matching", {
+        method: "POST",
+        headers: {
+          'Authorization': token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(matchingPayload)
+      })
+
+      console.log("📥 Response status:", matchingResponse.status)
+
+      if (!matchingResponse.ok) {
+        const errorText = await matchingResponse.text()
+        console.error("❌ Erro no matching:", errorText)
+        throw new Error(`Erro no matching: ${matchingResponse.status} - ${errorText}`)
+      }
+
+      const matchingData: MatchingResponse = await matchingResponse.json()
+      console.log("✅ Matching response:", matchingData)
+
+      if (!matchingData.sucesso) {
+        alert(matchingData.mensagem || "Não foi possível fazer o matching")
+        return
+      }
+
+      // CORREÇÃO: Usar o endpoint que cria o encontro diretamente
+      const criarPayload = {
+        localId: localAleatorio.id,
+        dataHora: selectedDate,
+        minimoPreferenciasIguais: 3
+      }
+
+      console.log("📤 Payload de criação:", criarPayload)
+
+      const criarResponse = await fetch("http://localhost:8081/bff/encontros", {
+        method: "POST",
+        headers: {
+          'Authorization': token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(criarPayload)
+      })
+
+      console.log("📥 Response status criação:", criarResponse.status)
+
+      if (!criarResponse.ok) {
+        const errorText = await criarResponse.text()
+        console.error("❌ Erro ao criar encontro:", errorText)
+        throw new Error(`Erro ao criar encontro: ${criarResponse.status} - ${errorText}`)
+      }
+
+      const encontroCriado = await criarResponse.json()
+      console.log("✅ Encontro criado:", encontroCriado)
+
+      // Adicionar o usuário logado como participante
+      const encontroId = encontroCriado.id
+      
+      const addParticipanteResponse = await fetch(
+        `http://localhost:8081/bff/encontros/${encontroId}/participantes/${usuarioId}`, 
+        {
+          method: "POST",
+          headers: {
+            'Authorization': token,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      if (addParticipanteResponse.ok) {
+        setMessage("Oba! Deu Match")
+        setShowMessage(true)
+        setShowModal(false)
+        setSelectedDate("")
+        
+        // Recarregar o encontro
+        await carregarEncontro()
+        
+        setTimeout(() => setShowMessage(false), 3000)
+      } else {
+        const errorText = await addParticipanteResponse.text()
+        throw new Error(`Erro ao adicionar participante: ${addParticipanteResponse.status} - ${errorText}`)
+      }
+
+    } catch (error: any) {
+      console.error("❌ Erro ao criar encontro:", error)
+      alert(error.message || "Erro ao criar encontro. Tente novamente.")
+    } finally {
+      setLoading(false)
+    }
   }
+
+  const handleCancelarEncontro = async () => {
+    if (!encontro) return
+
+    try {
+      const token = localStorage.getItem("token")
+      
+      if (!token) {
+        alert("Usuário não autenticado")
+        return
+      }
+
+      const response = await fetch(`http://localhost:8081/bff/encontros/${encontro.id}`, {
+        method: "DELETE",
+        headers: {
+          'Authorization': token
+        }
+      })
+
+      if (response.ok) {
+        setMessage("Que pena!")
+        setShowMessage(true)
+        setEncontro(null)
+        setTimeout(() => setShowMessage(false), 3000)
+      } else {
+        const errorText = await response.text()
+        throw new Error(`Erro ao cancelar: ${response.status} - ${errorText}`)
+      }
+    } catch (error: any) {
+      console.error("Erro ao cancelar encontro:", error)
+      alert(error.message || "Erro ao cancelar encontro. Tente novamente.")
+    }
+  }
+
+  const formatarDataHora = (dataHora: string) => {
+    const data = new Date(dataHora)
+    return {
+      data: data.toLocaleDateString('pt-BR'),
+      hora: data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    }
+  }
+
+  const opcoesData = getProximosFinaisDeSemana()
 
   return (
     <div className="min-h-screen bg-white flex flex-col pb-20">
@@ -289,10 +350,10 @@ export default function HomePage() {
         </h1>
 
         <h2 className="text-xl font-semibold text-gray-900 mb-12">
-          Olá {typeof window !== "undefined" ? localStorage.getItem("userName") || "Usuário" : "Usuário"} 👋
+          Olá {usuario?.nome || "Usuário"} 👋
         </h2>
 
-        {scheduledEvent ? (
+        {encontro ? (
           <div className="w-full max-w-sm space-y-6">
             <div className="border-2 border-gray-900 rounded-2xl overflow-hidden">
               <div className="bg-white px-4 py-3 text-center border-b-2 border-gray-900">
@@ -305,39 +366,45 @@ export default function HomePage() {
                 </div>
 
                 <div className="flex-1 pt-1">
-                  <h4 className="font-semibold text-gray-900 mb-1">{scheduledEvent.type}</h4>
-                  <p className="text-sm text-gray-700">{scheduledEvent.date}</p>
-                  <p className="text-sm text-gray-700 font-semibold mt-2">{scheduledEvent.time}</p>
-                  <p className="text-sm text-gray-700">{scheduledEvent.location}</p>
+                  <h4 className="font-semibold text-gray-900 mb-1">Encontro Social</h4>
+                  <p className="text-sm text-gray-700">{formatarDataHora(encontro.dataHora).data}</p>
+                  <p className="text-sm text-gray-700 font-semibold mt-2">
+                    {formatarDataHora(encontro.dataHora).hora}
+                  </p>
+                  <p className="text-sm text-gray-700">{encontro.local?.endereco || "Local a definir"}</p>
+                  <p className="text-sm text-gray-600 mt-2">
+                    {encontro.totalParticipantes} participantes
+                  </p>
                 </div>
               </div>
 
               <div className="flex border-t-2 border-gray-900">
                 <button
-                  onClick={() => handleCancelClick(scheduledEvent)}
+                  onClick={handleCancelarEncontro}
                   className="flex-1 bg-[#F5A623] text-gray-900 font-bold py-3 text-sm border-r border-gray-900 hover:bg-[#e69515] transition-colors"
                 >
                   CANCELAR
                 </button>
+                <button className="flex-1 bg-[#4A90E2] text-white font-bold py-3 text-sm hover:bg-[#3a7bc8] transition-colors">
+                  CONFIRMAR
+                </button>
               </div>
             </div>
 
-            {showAddButton && (
-              <button
-                onClick={() => router.push("/encontro")}
-                className="w-full border-2 border-gray-900 rounded-full py-4 font-bold text-gray-900 hover:bg-gray-50 transition-colors"
-              >
-                + ADD UM NOVO ENCONTRO
-              </button>
-            )}
+            <button
+              disabled
+              className="w-full border-2 border-gray-900 rounded-full py-4 font-bold text-gray-500 bg-gray-100 cursor-not-allowed"
+            >
+              NOVO ENCONTRO
+            </button>
           </div>
         ) : (
           <div className="w-full max-w-sm">
             <button
-              onClick={() => router.push("/encontro")}
+              onClick={() => setShowModal(true)}
               className="w-full border-2 border-gray-900 rounded-full py-4 font-bold text-gray-900 hover:bg-gray-50 transition-colors"
             >
-              + ADD UM NOVO ENCONTRO
+              NOVO ENCONTRO
             </button>
           </div>
         )}
@@ -349,25 +416,43 @@ export default function HomePage() {
         </div>
       )}
 
-      {showCancelModal && (
+      {showModal && (
         <div className="fixed inset-0 z-50 flex items-end justify-center">
-          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setShowCancelModal(false)} />
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setShowModal(false)} />
           <div className="relative bg-white rounded-t-3xl p-8 w-full max-w-lg shadow-xl animate-slide-up">
-            <h3 className="text-center font-semibold text-gray-900 mb-6 text-lg">
-              Você tem certeza que quer cancelar o Encontro?
+            <h3 className="text-center font-semibold text-gray-900 mb-2 text-lg">
+              Escolha a data que você prefere e veja a mágica acontecer
             </h3>
+            
+            <div className="space-y-3 my-6">
+              {opcoesData.map((opcao) => (
+                <button
+                  key={opcao.value}
+                  onClick={() => setSelectedDate(opcao.value)}
+                  className={`w-full border-2 rounded-full py-4 font-semibold transition-colors ${
+                    selectedDate === opcao.value
+                      ? "border-[#4A90E2] bg-blue-50 text-[#4A90E2]"
+                      : "border-gray-900 text-gray-900 hover:bg-gray-50"
+                  }`}
+                >
+                  {opcao.label}
+                </button>
+              ))}
+            </div>
+
             <div className="space-y-3">
               <button
-                onClick={handleCancel}
-                className="w-full border-2 border-gray-900 rounded-full py-4 font-semibold text-gray-900 hover:bg-gray-50 transition-colors"
+                onClick={handleCriarEncontro}
+                disabled={loading || !selectedDate || locais.length === 0}
+                className="w-full bg-[#4A90E2] text-white font-bold py-4 rounded-full hover:bg-[#3a7bc8] transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                Cancelar Evento
+                {loading ? "Criando..." : "Criar"}
               </button>
               <button
-                onClick={() => setShowCancelModal(false)}
+                onClick={() => setShowModal(false)}
                 className="w-full border-2 border-gray-900 rounded-full py-4 font-semibold text-gray-900 hover:bg-gray-50 transition-colors"
               >
-                Manter Evento
+                Cancelar
               </button>
             </div>
           </div>
