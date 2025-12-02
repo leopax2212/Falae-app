@@ -220,6 +220,7 @@ export default function HomePage() {
         dataHora: selectedDate,
         minimoPreferenciasIguais: 3,
         numeroParticipantes: 4,
+        usuarioId: usuarioId
       };
 
       console.log("📤 Payload do matching:", matchingPayload);
@@ -401,7 +402,7 @@ export default function HomePage() {
 
                 <div className="flex-1 pt-1">
                   <h4 className="font-semibold text-gray-900 mb-1">
-                    Encontro Social
+                    {encontro.local?.nome || "Encontro Social"}
                   </h4>
                   <p className="text-sm text-gray-700">
                     {formatarDataHora(encontro.dataHora).data}
@@ -424,9 +425,6 @@ export default function HomePage() {
                   className="flex-1 bg-[#F5A623] text-gray-900 font-bold py-3 text-sm border-r border-gray-900 hover:bg-[#e69515] transition-colors"
                 >
                   CANCELAR
-                </button>
-                <button className="flex-1 bg-[#4A90E2] text-white font-bold py-3 text-sm hover:bg-[#3a7bc8] transition-colors">
-                  CONFIRMAR
                 </button>
               </div>
             </div>
