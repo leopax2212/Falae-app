@@ -1,0 +1,60 @@
+version: "3.9"
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: falae_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: Le@n130497!1
+      MYSQL_DATABASE: falae
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  backend:
+    build:
+      context: ./FalaeApp
+      dockerfile: Dockerfile
+    container_name: falae_backend_net
+    environment:
+      ASPNETCORE_URLS: "http://0.0.0.0:5000"
+      ConnectionStrings__falae: "server=mysql;port=3306;user=root;password=Le@n130497!1;database=falae"
+      DOTNET_ENVIRONMENT: "Production"
+    depends_on:
+      - mysql
+    ports:
+      - "5000:5000"
+
+  bff:
+    build:
+      context: ./Falae-BFF
+      dockerfile: Dockerfile
+    container_name: falae_bff_spring
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/falae
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Le@n130497!1
+      BACKEND_BASE_URL: http://backend:5000
+    depends_on:
+      - mysql
+      - backend
+    ports:
+      - "8081:8081"
+
+  frontend:
+    build:
+      context: ./Falae-app
+      dockerfile: Dockerfile
+    container_name: falae_frontend_next
+    environment:
+      NEXT_PUBLIC_BFF_URL: http://localhost:8081
+    depends_on:
+      - bff
+    ports:
+      - "3000:3000"
+
+volumes:
+  mysql_data:
