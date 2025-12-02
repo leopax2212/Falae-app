@@ -3,7 +3,7 @@
 import { Logo } from "@/components/logo";
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Trash2 } from "lucide-react";
 
 interface Usuario {
   id: string;
@@ -19,6 +19,7 @@ export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [hoveredUserId, setHoveredUserId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -45,6 +46,27 @@ export default function UsuariosPage() {
       (user.nome ?? "").toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [searchTerm, usuarios]);
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (confirm(`Tem certeza que deseja deletar o usuário "${userName}"?`)) {
+      try {
+        const response = await fetch(`http://localhost:8081/bff/usuarios/${userId}`, {
+          method: 'DELETE',
+        });
+        
+        if (response.ok) {
+          // Remove o usuário da lista local
+          setUsuarios(usuarios.filter(user => user.id !== userId));
+          alert('Usuário deletado com sucesso!');
+        } else {
+          alert('Erro ao deletar usuário');
+        }
+      } catch (error) {
+        console.error('Erro ao deletar usuário:', error);
+        alert('Erro ao deletar usuário');
+      }
+    }
+  };
 
   const totalPages = Math.ceil(filteredUsuarios.length / ITEMS_PER_PAGE);
   const paginatedUsuarios = filteredUsuarios.slice(
@@ -75,11 +97,28 @@ export default function UsuariosPage() {
 
           <div className="space-y-4">
             {paginatedUsuarios.map((user) => (
-              <Link key={user.id} href={`/admin/usuarios/${user.id}`}>
-                <button className="w-full rounded-full border-2 border-black bg-white px-6 py-4 text-base font-semibold transition-colors hover:bg-gray-50">
-                  {user.nome}
-                </button>
-              </Link>
+              <div 
+                key={user.id}
+                className="relative w-full rounded-full border-2 border-black bg-white px-6 py-4 transition-colors hover:bg-gray-50 cursor-pointer"
+                onMouseEnter={() => setHoveredUserId(user.id)}
+                onMouseLeave={() => setHoveredUserId(null)}
+                onClick={() => handleDeleteUser(user.id, user.nome)}
+              >
+                {/* Nome do usuário centralizado */}
+                <div className="flex justify-center">
+                  <span className="text-base font-semibold text-center">
+                    {user.nome}
+                  </span>
+                </div>
+                
+                {/* Ícone de deletar no canto direito (apenas no hover) */}
+                {hoveredUserId === user.id && (
+                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+                    <Trash2 className="h-5 w-5 text-red-500" />
+                    <span className="text-sm text-red-500 font-medium">Deletar</span>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
 
